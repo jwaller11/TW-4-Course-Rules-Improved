@@ -269,7 +269,10 @@ function flySelectedRoute() {
 function setInfo(feature) { document.getElementById("infoBox").textContent = descriptionForFeature(feature); }
 
 viewer.selectedEntityChanged.addEventListener(entity => {
-  if (entity && entity.tw4Feature) setInfo(entity.tw4Feature);
+  if (entity && entity.tw4Feature) {
+    setInfo(entity.tw4Feature);
+    document.getElementById("selectedPanel").open = true;
+  }
 });
 
 ["pointsToggle", "routesToggle", "areasToggle"].forEach(id => document.getElementById(id).addEventListener("change", updateVisibility));
