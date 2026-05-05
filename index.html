@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TW-4 Course Rules Cesium Starter</title>
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.124/Build/Cesium/Cesium.js"></script>
+  <link href="https://cesium.com/downloads/cesiumjs/releases/1.124/Build/Cesium/Widgets/widgets.css" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="cesiumContainer"></div>
+
+  <aside id="panel">
+    <h1>TW-4 Course Rules</h1>
+    <div class="small">Cesium starter generated from your KML. Use for study/visualization only; verify all procedures against current pubs.</div>
+
+    <section>
+      <h2>View</h2>
+      <button id="homeBtn">Home: Corpus cube</button>
+      <button id="topDownBtn">Birdseye</button>
+      <button id="tiltBtn">3D Tilt</button>
+    </section>
+
+    <section>
+      <h2>Layers</h2>
+      <div class="row"><input type="checkbox" id="pointsToggle" checked><label for="pointsToggle">Waypoints / Airports</label></div>
+      <div class="row"><input type="checkbox" id="routesToggle" checked><label for="routesToggle">Routes / Lines</label></div>
+      <div class="row"><input type="checkbox" id="areasToggle" checked><label for="areasToggle">Working Areas / MOAs</label></div>
+      <div id="categoryToggles"></div>
+    </section>
+
+    <section>
+      <h2>Route Flythrough</h2>
+      <select id="routeSelect"></select>
+      <div class="buttonRow">
+        <button id="flyRouteBtn">Fly route</button>
+        <button id="stopFlyBtn">Stop</button>
+      </div>
+      <div class="small">Tip: flythrough follows KML altitudes when present. Many Google Earth KML route altitudes are in meters; 458 m ≈ 1,500 ft.</div>
+    </section>
+
+    <section>
+      <h2>Selected</h2>
+      <div id="infoBox" class="info">Click a point, route, or area.</div>
+    </section>
+  </aside>
+
+  <script src="courseRulesData.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
