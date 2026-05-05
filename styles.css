@@ -25,3 +25,26 @@ select { background: #132236; }
 .info { font-size: 13px; line-height: 1.35; color: #e8eef7; background: rgba(255,255,255,0.06); padding: 10px; border-radius: 10px; white-space: pre-wrap; }
 .category { border-top: 1px solid rgba(255,255,255,.1); padding-top: 6px; margin-top: 6px; }
 .cesium-viewer-bottom { display: none; }
+details {
+  margin-top: 12px;
+  border-top: 1px solid rgba(255,255,255,0.12);
+  padding-top: 8px;
+}
+
+summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #cfe7ff;
+  padding: 6px 0;
+}
+
+summary:hover {
+  color: white;
+}
+
+details > section {
+  margin-top: 8px;
+}
