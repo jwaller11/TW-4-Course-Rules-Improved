@@ -59,6 +59,38 @@ function classifyRoute(f) {
 
   return "other";
 }
+function getAirportCode(f) {
+  const text = f.category || "";
+  const match = text.match(/\((K[A-Z0-9]{3})\)/);
+  return match ? match[1] : "UNKNOWN";
+}
+
+function getRouteGroup(f) {
+  return (f.folderPath || [])[1] || "";
+}
+
+function getRunway(f) {
+  return f.name || "";
+}
+
+function getRouteRole(f) {
+  const group = getRouteGroup(f).toLowerCase();
+
+  if (group.includes("departure")) return "departure";
+
+  if (
+    group.includes("arrival") ||
+    group.includes("recovery")
+  ) return "arrival";
+
+  if (
+    group.includes("working") ||
+    group.includes("moa") ||
+    group.includes("area")
+  ) return "workingArea";
+
+  return "other";
+}
 
 const entitiesByType = { point: [], line: [], polygon: [] };
 const entitiesByCategory = new Map();
@@ -186,10 +218,12 @@ function updateVisibility() {
     polygon: document.getElementById("areasToggle").checked
   };
   for (const [type, list] of Object.entries(entitiesByType)) setVisible(list, typeVisibility[type]);
+  /*
   for (const [category, list] of entitiesByCategory.entries()) {
     const cb = document.querySelector(`[data-category="${CSS.escape(category)}"]`);
     if (cb && !cb.checked) setVisible(list, false);
   }
+  */
 }
 
 function buildCategoryToggles() {
@@ -335,7 +369,9 @@ document.getElementById("tiltBtn").addEventListener("click", tiltView);
 document.getElementById("stopFlyBtn").addEventListener("click", stopFlythrough);
 document.getElementById("showMissionBtn").addEventListener("click", showSelectedMission);
 
+/*
 buildCategoryToggles();
+*/
 buildRouteSelect();
 corpusHome();
 console.log(`Loaded ${DATA.featureCount} TW-4 features`, DATA);
