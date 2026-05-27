@@ -212,18 +212,20 @@ DATA.features.forEach(addFeature);
 
 function setVisible(list, show) { list.forEach(e => e.show = show); }
 function updateVisibility() {
-  const typeVisibility = {
-    point: document.getElementById("pointsToggle").checked,
-    line: document.getElementById("routesToggle").checked,
-    polygon: document.getElementById("areasToggle").checked
-  };
-  for (const [type, list] of Object.entries(entitiesByType)) setVisible(list, typeVisibility[type]);
-  /*
-  for (const [category, list] of entitiesByCategory.entries()) {
-    const cb = document.querySelector(`[data-category="${CSS.escape(category)}"]`);
-    if (cb && !cb.checked) setVisible(list, false);
-  }
-  */
+  setVisible(
+    entitiesByType.point,
+    document.getElementById("pointsToggle").checked
+  );
+
+  setVisible(
+    entitiesByType.line,
+    document.getElementById("routesToggle").checked
+  );
+
+  setVisible(
+    entitiesByType.polygon,
+    document.getElementById("areasToggle").checked
+  );
 }
 
 function buildCategoryToggles() {
