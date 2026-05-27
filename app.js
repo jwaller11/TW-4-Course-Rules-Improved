@@ -43,6 +43,22 @@ const categoryPalette = [
   Cesium.Color.MAGENTA, Cesium.Color.ROYALBLUE, Cesium.Color.SPRINGGREEN,
   Cesium.Color.PINK, Cesium.Color.WHITE, Cesium.Color.TOMATO
 ];
+const routeTypeColors = {
+  departure: Cesium.Color.RED,
+  arrival: Cesium.Color.GREEN,
+  working: Cesium.Color.BLUE,
+  other: Cesium.Color.YELLOW
+};
+
+function classifyRoute(f) {
+  const text = `${f.name} ${(f.folderPath || []).join(" ")}`.toLowerCase();
+
+  if (text.includes("departure") || text.includes("dep")) return "departure";
+  if (text.includes("arrival") || text.includes("recover") || text.includes("recovery")) return "arrival";
+  if (text.includes("area") || text.includes("moa") || text.includes("working")) return "working";
+
+  return "other";
+}
 
 const entitiesByType = { point: [], line: [], polygon: [] };
 const entitiesByCategory = new Map();
@@ -118,7 +134,7 @@ function addFeature(f) {
       polyline: {
         positions,
         width: 4,
-        material: catColor.withAlpha(0.92),
+        material: routeTypeColors[classifyRoute(f)].withAlpha(0.95),
         clampToGround: false
       }
     });
@@ -126,25 +142,32 @@ function addFeature(f) {
   }
 
   if (f.type === "polygon") {
-    const positions = f.coordinates.map(cartesianFromCoord);
-    entity = viewer.entities.add({
-      ...common,
-      polygon: {
-        hierarchy: new Cesium.PolygonHierarchy(positions),
-        material: catColor.withAlpha(0.25),
-        outline: true,
-        outlineColor: catColor,
-        perPositionHeight: true
-      },
-      polyline: {
-        positions: [...positions, positions[0]],
-        width: 2,
-        material: catColor.withAlpha(0.9),
-        clampToGround: false
-      }
-    });
-  }
+  const positions = f.coordinates.map(cartesianFromCoord);
 
+  const floorMeters = (f.floorFt || 0) * 0.3048;
+  const ceilingMeters = (f.ceilingFt || 3000) * 0.3048;
+
+  entity = viewer.entities.add({
+    ...common,
+
+    polygon: {
+      hierarchy: new Cesium.PolygonHierarchy(positions),
+      material: catColor.withAlpha(0.18),
+      outline: true,
+      outlineColor: catColor,
+      height: floorMeters,
+      extrudedHeight: ceilingMeters
+    },
+
+    polyline: {
+      positions: [...positions, positions[0]],
+      width: 2,
+      material: catColor.withAlpha(0.9),
+      clampToGround: false
+    }
+  });
+}
+  
   if (entity) {
     entity.tw4Feature = f;
     entitiesByType[f.type].push(entity);
@@ -181,16 +204,25 @@ function buildCategoryToggles() {
   });
 }
 
+function addOption(select, route, idx) {
+  const opt = document.createElement("option");
+  opt.value = idx;
+  opt.textContent = `${route.feature.category} / ${route.feature.name}`;
+  select.appendChild(opt);
+}
+
 function buildRouteSelect() {
-  const select = document.getElementById("routeSelect");
-  routes
-    .sort((a,b) => `${a.feature.category} ${a.feature.name}`.localeCompare(`${b.feature.category} ${b.feature.name}`))
-    .forEach((r, idx) => {
-      const opt = document.createElement("option");
-      opt.value = idx;
-      opt.textContent = `${r.feature.category} / ${r.feature.folderPath.slice(1).join(" / ")} / ${r.feature.name}`.replace(/\/ \/  \/ /g, " / ");
-      select.appendChild(opt);
-    });
+  const departureSelect = document.getElementById("departureSelect");
+  const destinationSelect = document.getElementById("destinationSelect");
+  const arrivalSelect = document.getElementById("arrivalSelect");
+
+  routes.forEach((route, idx) => {
+    const type = classifyRoute(route.feature);
+
+    if (type === "departure") addOption(departureSelect, route, idx);
+    else if (type === "arrival") addOption(arrivalSelect, route, idx);
+    else addOption(destinationSelect, route, idx);
+  });
 }
 
 function corpusHome() {
@@ -266,6 +298,27 @@ function flySelectedRoute() {
   viewer.trackedEntity = aircraftEntity;
 }
 
+function getSelectedMissionRoutes() {
+  const depIdx = Number(document.getElementById("departureSelect").value);
+  const destIdx = Number(document.getElementById("destinationSelect").value);
+  const arrIdx = Number(document.getElementById("arrivalSelect").value);
+
+  return [routes[depIdx], routes[destIdx], routes[arrIdx]].filter(Boolean);
+}
+
+function showSelectedMission() {
+  updateVisibility();
+
+  const selected = getSelectedMissionRoutes();
+
+  routes.forEach(r => {
+    r.entity.show = selected.includes(r);
+    if (r.entity.polyline) r.entity.polyline.width = selected.includes(r) ? 8 : 4;
+  });
+
+  viewer.flyTo(selected.map(r => r.entity));
+}
+
 function setInfo(feature) { document.getElementById("infoBox").textContent = descriptionForFeature(feature); }
 
 viewer.selectedEntityChanged.addEventListener(entity => {
@@ -279,8 +332,8 @@ viewer.selectedEntityChanged.addEventListener(entity => {
 document.getElementById("homeBtn").addEventListener("click", corpusHome);
 document.getElementById("topDownBtn").addEventListener("click", birdseye);
 document.getElementById("tiltBtn").addEventListener("click", tiltView);
-document.getElementById("flyRouteBtn").addEventListener("click", flySelectedRoute);
 document.getElementById("stopFlyBtn").addEventListener("click", stopFlythrough);
+document.getElementById("showMissionBtn").addEventListener("click", showSelectedMission);
 
 buildCategoryToggles();
 buildRouteSelect();
