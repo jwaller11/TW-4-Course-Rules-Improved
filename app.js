@@ -91,7 +91,15 @@ function getRouteRole(f) {
 
   return "other";
 }
-
+const FEATURE_OVERRIDES = {
+  // example only
+  f018: {
+    airport: "KTFP",
+    runway: "13",
+    routeRole: "departure",
+    routeGroup: "Single Departures"
+  }
+};
 const entitiesByType = { point: [], line: [], polygon: [] };
 const entitiesByCategory = new Map();
 const routes = [];
