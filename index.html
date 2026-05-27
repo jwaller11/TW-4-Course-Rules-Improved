@@ -35,16 +35,27 @@
   </details>
 
   <details>
-    <summary>Route Flythrough</summary>
-    <section>
-      <select id="routeSelect"></select>
-      <div class="buttonRow">
-        <button id="flyRouteBtn">Fly route</button>
-        <button id="stopFlyBtn">Stop</button>
-      </div>
-      <div class="small">Tip: flythrough follows KML altitudes when present. Many Google Earth KML route altitudes are in meters; 458 m ≈ 1,500 ft.</div>
-    </section>
-  </details>
+  <summary>Mission Builder</summary>
+  <section>
+    <label for="departureSelect">Departure</label>
+    <select id="departureSelect"></select>
+
+    <label for="destinationSelect">Working Area / Airport</label>
+    <select id="destinationSelect"></select>
+
+    <label for="arrivalSelect">Arrival / Recovery</label>
+    <select id="arrivalSelect"></select>
+
+    <div class="buttonRow">
+      <button id="showMissionBtn">Show Selected Route</button>
+      <button id="stopFlyBtn">Stop</button>
+    </div>
+
+    <div class="small">
+      Select departure, destination, and arrival/recovery. App will highlight the selected mission legs.
+    </div>
+  </section>
+</details>
 
   <details open id="selectedPanel">
     <summary>Selected</summary>
