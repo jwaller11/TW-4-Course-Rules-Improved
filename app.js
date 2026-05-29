@@ -43,63 +43,7 @@ const categoryPalette = [
   Cesium.Color.MAGENTA, Cesium.Color.ROYALBLUE, Cesium.Color.SPRINGGREEN,
   Cesium.Color.PINK, Cesium.Color.WHITE, Cesium.Color.TOMATO
 ];
-const routeTypeColors = {
-  departure: Cesium.Color.RED,
-  arrival: Cesium.Color.GREEN,
-  working: Cesium.Color.BLUE,
-  other: Cesium.Color.YELLOW
-};
 
-function classifyRoute(f) {
-  const text = `${f.name} ${(f.folderPath || []).join(" ")}`.toLowerCase();
-
-  if (text.includes("departure") || text.includes("dep")) return "departure";
-  if (text.includes("arrival") || text.includes("recover") || text.includes("recovery")) return "arrival";
-  if (text.includes("area") || text.includes("moa") || text.includes("working")) return "working";
-
-  return "other";
-}
-function getAirportCode(f) {
-  const text = f.category || "";
-  const match = text.match(/\((K[A-Z0-9]{3})\)/);
-  return match ? match[1] : "UNKNOWN";
-}
-
-function getRouteGroup(f) {
-  return (f.folderPath || [])[1] || "";
-}
-
-function getRunway(f) {
-  return f.name || "";
-}
-
-function getRouteRole(f) {
-  const group = getRouteGroup(f).toLowerCase();
-
-  if (group.includes("departure")) return "departure";
-
-  if (
-    group.includes("arrival") ||
-    group.includes("recovery")
-  ) return "arrival";
-
-  if (
-    group.includes("working") ||
-    group.includes("moa") ||
-    group.includes("area")
-  ) return "workingArea";
-
-  return "other";
-}
-const FEATURE_OVERRIDES = {
-  // example only
-  f018: {
-    airport: "KTFP",
-    runway: "13",
-    routeRole: "departure",
-    routeGroup: "Single Departures"
-  }
-};
 const entitiesByType = { point: [], line: [], polygon: [] };
 const entitiesByCategory = new Map();
 const routes = [];
@@ -174,7 +118,7 @@ function addFeature(f) {
       polyline: {
         positions,
         width: 4,
-        material: routeTypeColors[classifyRoute(f)].withAlpha(0.95),
+        material: catColor.withAlpha(0.92),
         clampToGround: false
       }
     });
@@ -182,32 +126,25 @@ function addFeature(f) {
   }
 
   if (f.type === "polygon") {
-  const positions = f.coordinates.map(cartesianFromCoord);
+    const positions = f.coordinates.map(cartesianFromCoord);
+    entity = viewer.entities.add({
+      ...common,
+      polygon: {
+        hierarchy: new Cesium.PolygonHierarchy(positions),
+        material: catColor.withAlpha(0.25),
+        outline: true,
+        outlineColor: catColor,
+        perPositionHeight: true
+      },
+      polyline: {
+        positions: [...positions, positions[0]],
+        width: 2,
+        material: catColor.withAlpha(0.9),
+        clampToGround: false
+      }
+    });
+  }
 
-  const floorMeters = (f.floorFt || 0) * 0.3048;
-  const ceilingMeters = (f.ceilingFt || 3000) * 0.3048;
-
-  entity = viewer.entities.add({
-    ...common,
-
-    polygon: {
-      hierarchy: new Cesium.PolygonHierarchy(positions),
-      material: catColor.withAlpha(0.18),
-      outline: true,
-      outlineColor: catColor,
-      height: floorMeters,
-      extrudedHeight: ceilingMeters
-    },
-
-    polyline: {
-      positions: [...positions, positions[0]],
-      width: 2,
-      material: catColor.withAlpha(0.9),
-      clampToGround: false
-    }
-  });
-}
-  
   if (entity) {
     entity.tw4Feature = f;
     entitiesByType[f.type].push(entity);
@@ -220,20 +157,16 @@ DATA.features.forEach(addFeature);
 
 function setVisible(list, show) { list.forEach(e => e.show = show); }
 function updateVisibility() {
-  setVisible(
-    entitiesByType.point,
-    document.getElementById("pointsToggle").checked
-  );
-
-  setVisible(
-    entitiesByType.line,
-    document.getElementById("routesToggle").checked
-  );
-
-  setVisible(
-    entitiesByType.polygon,
-    document.getElementById("areasToggle").checked
-  );
+  const typeVisibility = {
+    point: document.getElementById("pointsToggle").checked,
+    line: document.getElementById("routesToggle").checked,
+    polygon: document.getElementById("areasToggle").checked
+  };
+  for (const [type, list] of Object.entries(entitiesByType)) setVisible(list, typeVisibility[type]);
+  for (const [category, list] of entitiesByCategory.entries()) {
+    const cb = document.querySelector(`[data-category="${CSS.escape(category)}"]`);
+    if (cb && !cb.checked) setVisible(list, false);
+  }
 }
 
 function buildCategoryToggles() {
@@ -248,24 +181,67 @@ function buildCategoryToggles() {
   });
 }
 
-function addOption(select, route, idx) {
-  const opt = document.createElement("option");
-  opt.value = idx;
-  opt.textContent = `${route.feature.category} / ${route.feature.name}`;
-  select.appendChild(opt);
+function buildRouteSelect() {
+  const select = document.getElementById("routeSelect");
+  routes
+    .sort((a,b) => `${a.feature.category} ${a.feature.name}`.localeCompare(`${b.feature.category} ${b.feature.name}`))
+    .forEach((r, idx) => {
+      const opt = document.createElement("option");
+      opt.value = idx;
+      opt.textContent = `${r.feature.category} / ${r.feature.folderPath.slice(1).join(" / ")} / ${r.feature.name}`.replace(/\/ \/  \/ /g, " / ");
+      select.appendChild(opt);
+    });
+}
+function lineLabel(route) {
+  const f = route.feature;
+  return `${f.id} | ${f.name} | ${(f.folderPath || []).join(" > ")}`;
 }
 
-function buildRouteSelect() {
-  const departureSelect = document.getElementById("departureSelect");
-  const destinationSelect = document.getElementById("destinationSelect");
-  const arrivalSelect = document.getElementById("arrivalSelect");
+function buildLineInspector() {
+  const input = document.getElementById("lineFilterInput");
+  const select = document.getElementById("lineSelect");
 
-  routes.forEach((route, idx) => {
-    const type = classifyRoute(route.feature);
+  function refresh() {
+    const q = input.value.toLowerCase().trim();
+    select.innerHTML = "";
 
-    if (type === "departure") addOption(departureSelect, route, idx);
-    else if (type === "arrival") addOption(arrivalSelect, route, idx);
-    else addOption(destinationSelect, route, idx);
+    routes.forEach((route, idx) => {
+      const label = lineLabel(route);
+      if (!q || label.toLowerCase().includes(q)) {
+        const opt = document.createElement("option");
+        opt.value = idx;
+        opt.textContent = label;
+        select.appendChild(opt);
+      }
+    });
+  }
+
+  input.addEventListener("input", refresh);
+  refresh();
+}
+
+function showSelectedLineOnly() {
+  const idx = Number(document.getElementById("lineSelect").value);
+  const selected = routes[idx];
+  if (!selected) return;
+
+  updateVisibility();
+
+  routes.forEach(r => {
+    r.entity.show = r === selected;
+    if (r.entity.polyline) r.entity.polyline.width = r === selected ? 9 : 4;
+  });
+
+  setInfo(selected.feature);
+  viewer.flyTo(selected.entity);
+}
+
+function showAllLines() {
+  updateVisibility();
+
+  routes.forEach(r => {
+    r.entity.show = true;
+    if (r.entity.polyline) r.entity.polyline.width = 4;
   });
 }
 
@@ -342,27 +318,6 @@ function flySelectedRoute() {
   viewer.trackedEntity = aircraftEntity;
 }
 
-function getSelectedMissionRoutes() {
-  const depIdx = Number(document.getElementById("departureSelect").value);
-  const destIdx = Number(document.getElementById("destinationSelect").value);
-  const arrIdx = Number(document.getElementById("arrivalSelect").value);
-
-  return [routes[depIdx], routes[destIdx], routes[arrIdx]].filter(Boolean);
-}
-
-function showSelectedMission() {
-  updateVisibility();
-
-  const selected = getSelectedMissionRoutes();
-
-  routes.forEach(r => {
-    r.entity.show = selected.includes(r);
-    if (r.entity.polyline) r.entity.polyline.width = selected.includes(r) ? 8 : 4;
-  });
-
-  viewer.flyTo(selected.map(r => r.entity));
-}
-
 function setInfo(feature) { document.getElementById("infoBox").textContent = descriptionForFeature(feature); }
 
 viewer.selectedEntityChanged.addEventListener(entity => {
@@ -376,12 +331,13 @@ viewer.selectedEntityChanged.addEventListener(entity => {
 document.getElementById("homeBtn").addEventListener("click", corpusHome);
 document.getElementById("topDownBtn").addEventListener("click", birdseye);
 document.getElementById("tiltBtn").addEventListener("click", tiltView);
+document.getElementById("flyRouteBtn").addEventListener("click", flySelectedRoute);
 document.getElementById("stopFlyBtn").addEventListener("click", stopFlythrough);
-document.getElementById("showMissionBtn").addEventListener("click", showSelectedMission);
+document.getElementById("showLineBtn").addEventListener("click", showSelectedLineOnly);
+document.getElementById("showAllLinesBtn").addEventListener("click", showAllLines);
 
-/*
 buildCategoryToggles();
-*/
 buildRouteSelect();
+buildLineInspector();
 corpusHome();
 console.log(`Loaded ${DATA.featureCount} TW-4 features`, DATA);
