@@ -192,6 +192,58 @@ function buildRouteSelect() {
       select.appendChild(opt);
     });
 }
+function lineLabel(route) {
+  const f = route.feature;
+  return `${f.id} | ${f.name} | ${(f.folderPath || []).join(" > ")}`;
+}
+
+function buildLineInspector() {
+  const input = document.getElementById("lineFilterInput");
+  const select = document.getElementById("lineSelect");
+
+  function refresh() {
+    const q = input.value.toLowerCase().trim();
+    select.innerHTML = "";
+
+    routes.forEach((route, idx) => {
+      const label = lineLabel(route);
+      if (!q || label.toLowerCase().includes(q)) {
+        const opt = document.createElement("option");
+        opt.value = idx;
+        opt.textContent = label;
+        select.appendChild(opt);
+      }
+    });
+  }
+
+  input.addEventListener("input", refresh);
+  refresh();
+}
+
+function showSelectedLineOnly() {
+  const idx = Number(document.getElementById("lineSelect").value);
+  const selected = routes[idx];
+  if (!selected) return;
+
+  updateVisibility();
+
+  routes.forEach(r => {
+    r.entity.show = r === selected;
+    if (r.entity.polyline) r.entity.polyline.width = r === selected ? 9 : 4;
+  });
+
+  setInfo(selected.feature);
+  viewer.flyTo(selected.entity);
+}
+
+function showAllLines() {
+  updateVisibility();
+
+  routes.forEach(r => {
+    r.entity.show = true;
+    if (r.entity.polyline) r.entity.polyline.width = 4;
+  });
+}
 
 function corpusHome() {
   viewer.camera.flyTo({
@@ -281,8 +333,11 @@ document.getElementById("topDownBtn").addEventListener("click", birdseye);
 document.getElementById("tiltBtn").addEventListener("click", tiltView);
 document.getElementById("flyRouteBtn").addEventListener("click", flySelectedRoute);
 document.getElementById("stopFlyBtn").addEventListener("click", stopFlythrough);
+document.getElementById("showLineBtn").addEventListener("click", showSelectedLineOnly);
+document.getElementById("showAllLinesBtn").addEventListener("click", showAllLines);
 
 buildCategoryToggles();
 buildRouteSelect();
+buildLineInspector();
 corpusHome();
 console.log(`Loaded ${DATA.featureCount} TW-4 features`, DATA);
