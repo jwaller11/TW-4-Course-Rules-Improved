@@ -331,13 +331,13 @@ viewer.selectedEntityChanged.addEventListener(entity => {
 document.getElementById("homeBtn").addEventListener("click", corpusHome);
 document.getElementById("topDownBtn").addEventListener("click", birdseye);
 document.getElementById("tiltBtn").addEventListener("click", tiltView);
-document.getElementById("flyRouteBtn").addEventListener("click", flySelectedRoute);
+// document.getElementById("flyRouteBtn").addEventListener("click", flySelectedRoute);
 document.getElementById("stopFlyBtn").addEventListener("click", stopFlythrough);
 document.getElementById("showLineBtn").addEventListener("click", showSelectedLineOnly);
 document.getElementById("showAllLinesBtn").addEventListener("click", showAllLines);
 
 buildCategoryToggles();
-buildRouteSelect();
+// buildRouteSelect();
 buildLineInspector();
 corpusHome();
 console.log(`Loaded ${DATA.featureCount} TW-4 features`, DATA);
