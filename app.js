@@ -138,29 +138,26 @@ function addFeature(rawFeature) {
   }
 
   if (f.type === "polygon") {
-    const floorMeters = (f.floorFt || 0) * 0.3048;
-    const ceilingMeters = (f.ceilingFt || 0) * 0.3048;
-    const basePositions = f.coordinates.map(c => Cesium.Cartesian3.fromDegrees(c[0], c[1], floorMeters));
-    const outlinePositions = [...basePositions, basePositions[0]];
-    entity = viewer.entities.add({
-      ...common,
-      polygon: {
-        hierarchy: new Cesium.PolygonHierarchy(basePositions),
-        material: catColor.withAlpha(0.18),
-        outline: true,
-        outlineColor: catColor,
-        perPositionHeight: true,
-        extrudedHeight: ceilingMeters || undefined
-      },
-      polyline: { positions: outlinePositions, width: 2, material: catColor.withAlpha(0.9), clampToGround: false }
-    });
-  }
+  const positions = f.coordinates.map(cartesianFromCoord);
+  const outlinePositions = [...positions, positions[0]];
 
-  if (entity) {
-    entity.tw4Feature = f;
-    if (entitiesByType[f.type]) entitiesByType[f.type].push(entity);
-    return entity;
-  }
+  entity = viewer.entities.add({
+    ...common,
+    polygon: {
+      hierarchy: new Cesium.PolygonHierarchy(positions),
+      material: catColor.withAlpha(0.18),
+      outline: true,
+      outlineColor: catColor,
+      perPositionHeight: false,
+      height: 0
+    },
+    polyline: {
+      positions: outlinePositions,
+      width: 2,
+      material: catColor.withAlpha(0.9),
+      clampToGround: true
+    }
+  });
 }
 
 DATA.features.forEach(addFeature);
