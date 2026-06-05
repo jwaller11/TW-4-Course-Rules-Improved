@@ -70,22 +70,18 @@ label {
 #lineSelect {
   height: 180px;
 }
-#togglePanelBtn {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 36px;
-  height: 36px;
-  z-index: 1000;
+#panel {
+  transition: left 0.25s ease;
 }
 
 #panel.collapsed {
-  width: 60px;
-  overflow: hidden;
+  left: -320px;
 }
 
-#panel.collapsed details,
-#panel.collapsed h1,
-#panel.collapsed .small {
-  display: none;
+#togglePanelBtn {
+  position: fixed;
+  left: 15px;
+  top: 15px;
+  width: 40px;
+  z-index: 9999;
 }
