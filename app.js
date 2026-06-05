@@ -164,6 +164,184 @@ function addFeature(rawFeature) {
 }
 
 DATA.features.forEach(addFeature);
+const AIRPORTS = window.TW4_AIRPORTS || [];
+const LINE_METADATA = window.TW4_LINE_METADATA || {};
+
+function getRouteMetaList() {
+  return routes.map((route, idx) => ({
+    idx,
+    entity: route.entity,
+    feature: route.feature,
+    meta: LINE_METADATA[route.feature.id] || {}
+  }));
+}
+
+function setOptions(selectId, items, labelFn, valueFn = x => x) {
+  const select = document.getElementById(selectId);
+  select.innerHTML = "";
+
+  const blank = document.createElement("option");
+  blank.value = "";
+  blank.textContent = "-- Select --";
+  select.appendChild(blank);
+
+  items.forEach(item => {
+    const opt = document.createElement("option");
+    opt.value = valueFn(item);
+    opt.textContent = labelFn(item);
+    select.appendChild(opt);
+  });
+}
+
+function uniqueSorted(arr) {
+  return [...new Set(arr.filter(Boolean))].sort();
+}
+
+function populateMissionBuilder() {
+  setOptions(
+    "departureAirportSelect",
+    AIRPORTS,
+    a => `${a.airportCode} - ${a.airportName}`,
+    a => a.airportCode
+  );
+
+  setOptions(
+    "recoveryAirportSelect",
+    AIRPORTS,
+    a => `${a.airportCode} - ${a.airportName}`,
+    a => a.airportCode
+  );
+
+  updateDepartureRunways();
+  updateRecoveryRunways();
+  updateDestinationOptions();
+}
+
+function getAirportByCode(code) {
+  return AIRPORTS.find(a => a.airportCode === code);
+}
+
+function updateDepartureRunways() {
+  const airportCode = document.getElementById("departureAirportSelect").value;
+  const airport = getAirportByCode(airportCode);
+  setOptions("departureRunwaySelect", airport?.runways || [], r => `RWY ${r}`);
+  updateDepartureRoutes();
+}
+
+function updateDepartureRoutes() {
+  const airport = document.getElementById("departureAirportSelect").value;
+  const runway = document.getElementById("departureRunwaySelect").value;
+
+  const matches = getRouteMetaList().filter(r =>
+    r.meta.airport === airport &&
+    r.meta.runway === runway &&
+    r.meta.routeType === "departure"
+  );
+
+  setOptions(
+    "departureRouteSelect",
+    matches,
+    r => `${r.meta.routeFamily || r.meta.name || r.feature.name}`,
+    r => r.idx
+  );
+}
+
+function updateDestinationOptions() {
+  const destinations = [
+    ...AIRPORTS.map(a => ({ type: "airport", id: a.airportCode, label: `${a.airportCode} - ${a.airportName}` })),
+    ...(window.TW4_POLYGONS || []).map(p => ({ type: "area", id: p.id, label: p.name }))
+  ];
+
+  setOptions("destinationSelect", destinations, d => d.label, d => `${d.type}:${d.id}`);
+}
+
+function updateDestinationArrivals() {
+  const value = document.getElementById("destinationSelect").value;
+  if (!value) return;
+
+  const [type, id] = value.split(":");
+  const airport = type === "airport" ? id : "";
+
+  const matches = getRouteMetaList().filter(r =>
+    airport &&
+    r.meta.airport === airport &&
+    r.meta.routeType === "arrival"
+  );
+
+  setOptions(
+    "destinationArrivalSelect",
+    matches,
+    r => `${r.meta.routeFamily || r.meta.name || r.feature.name}${r.meta.runway ? " - RWY " + r.meta.runway : ""}`,
+    r => r.idx
+  );
+
+  const departures = getRouteMetaList().filter(r =>
+    airport &&
+    r.meta.airport === airport &&
+    r.meta.routeType === "departure"
+  );
+
+  setOptions(
+    "destinationDepartureSelect",
+    departures,
+    r => `${r.meta.routeFamily || r.meta.name || r.feature.name}${r.meta.runway ? " - RWY " + r.meta.runway : ""}`,
+    r => r.idx
+  );
+}
+
+function updateRecoveryRunways() {
+  const airportCode = document.getElementById("recoveryAirportSelect").value;
+  const airport = getAirportByCode(airportCode);
+  setOptions("recoveryRunwaySelect", airport?.runways || [], r => `RWY ${r}`);
+  updateRecoveryArrivals();
+}
+
+function updateRecoveryArrivals() {
+  const airport = document.getElementById("recoveryAirportSelect").value;
+  const runway = document.getElementById("recoveryRunwaySelect").value;
+
+  const matches = getRouteMetaList().filter(r =>
+    r.meta.airport === airport &&
+    (!runway || r.meta.runway === runway || !r.meta.runway) &&
+    r.meta.routeType === "arrival"
+  );
+
+  setOptions(
+    "recoveryArrivalSelect",
+    matches,
+    r => `${r.meta.routeFamily || r.meta.name || r.feature.name}${r.meta.runway ? " - RWY " + r.meta.runway : ""}`,
+    r => r.idx
+  );
+}
+
+function getSelectedMissionRoutes() {
+  const ids = [
+    "departureRouteSelect",
+    "destinationArrivalSelect",
+    "destinationDepartureSelect",
+    "recoveryArrivalSelect"
+  ];
+
+  return ids
+    .map(id => Number(document.getElementById(id).value))
+    .filter(n => Number.isInteger(n))
+    .map(idx => routes[idx])
+    .filter(Boolean);
+}
+
+function showSelectedMission() {
+  const selected = getSelectedMissionRoutes();
+
+  updateVisibility();
+
+  routes.forEach(r => {
+    const active = selected.includes(r);
+    r.entity.show = active;
+    if (r.entity.polyline) r.entity.polyline.width = active ? 9 : 4;
+  });
+
+  if (selected.length) viewer.flyTo(selected.map(r => r.entity));
+}
 [...AIRPORTS, ...POINTS, ...POLYGONS].forEach(f => {
   const entity = addFeature(f);
   if (entity) referenceEntities.push(entity);
