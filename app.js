@@ -137,45 +137,56 @@ function addFeature(rawFeature) {
     routes.push({ feature: f, entity });
   }
 
-  if (f.type === "polygon") {
+if (f.type === "polygon") {
   const coords = f.coordinates || [];
   if (!coords.length) return;
 
   const floorMeters = (f.floorFt || 0) * 0.3048;
   const ceilingMeters = (f.ceilingFt || f.floorFt || 0) * 0.3048;
 
-const cleanCoords =
-  coords.length > 1 &&
-  coords[0][0] === coords[coords.length - 1][0] &&
-  coords[0][1] === coords[coords.length - 1][1]
-    ? coords.slice(0, -1)
-    : coords;
+  const bottom = coords.map(c =>
+    Cesium.Cartesian3.fromDegrees(c[0], c[1], floorMeters)
+  );
 
-const positions = cleanCoords.map(c =>
-  Cesium.Cartesian3.fromDegrees(c[0], c[1])
-);
+  const top = coords.map(c =>
+    Cesium.Cartesian3.fromDegrees(c[0], c[1], ceilingMeters)
+  );
 
-entity = viewer.entities.add({
-  ...common,
-  polygon: {
-    hierarchy: new Cesium.PolygonHierarchy(positions),
-    height: ceilingMeters,
-    extrudedHeight: floorMeters,
-    material: catColor.withAlpha(0.25),
-    outline: true,
-    outlineColor: catColor,
-    closeTop: true,
-    closeBottom: true
-  }
-});
+  const bottomClosed = [...bottom, bottom[0]];
+  const topClosed = [...top, top[0]];
 
-  if (entity) {
-    entity.tw4Feature = f;
-    if (entitiesByType[f.type]) entitiesByType[f.type].push(entity);
-    return entity;
+  entity = viewer.entities.add({
+    ...common,
+    polyline: {
+      positions: bottomClosed,
+      width: 2,
+      material: catColor.withAlpha(0.45),
+      clampToGround: false
+    }
+  });
+
+  viewer.entities.add({
+    ...common,
+    polyline: {
+      positions: topClosed,
+      width: 3,
+      material: catColor.withAlpha(0.95),
+      clampToGround: false
+    }
+  });
+
+  for (let i = 0; i < bottom.length; i++) {
+    viewer.entities.add({
+      ...common,
+      polyline: {
+        positions: [bottom[i], top[i]],
+        width: 1,
+        material: catColor.withAlpha(0.55),
+        clampToGround: false
+      }
+    });
   }
 }
-
 DATA.features.forEach(addFeature);
 
 function getRouteMetaList() {
