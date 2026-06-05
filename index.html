@@ -12,79 +12,83 @@
   <div id="cesiumContainer"></div>
 
   <aside id="panel">
-  <button id="togglePanelBtn">☰</button>
-  <h1>TW-4 Course Rules</h1>
-  <div class="small">Cesium starter generated from your KML. Use for study/visualization only; verify all procedures against current pubs.</div>
+    <button id="togglePanelBtn">☰</button>
+    <h1>TW-4 Course Rules</h1>
+    <div class="small">Cesium starter generated from your KML. Use for study/visualization only; verify all procedures against current pubs.</div>
 
-  <details open>
-    <summary>View</summary>
-    <section>
-      <button id="homeBtn">Home: Corpus cube</button>
-      <button id="topDownBtn">Birdseye</button>
-      <button id="tiltBtn">3D Tilt</button>
-    </section>
-  </details>
+    <details open>
+      <summary>View</summary>
+      <section>
+        <button id="homeBtn">Home: Corpus cube</button>
+        <button id="topDownBtn">Birdseye</button>
+        <button id="tiltBtn">3D Tilt</button>
+      </section>
+    </details>
 
-  <details open>
-    <summary>Layers</summary>
-    <section>
-      <div class="row"><input type="checkbox" id="pointsToggle" checked><label for="pointsToggle">Waypoints / Airports</label></div>
-      <div class="row"><input type="checkbox" id="routesToggle" checked><label for="routesToggle">Routes / Lines</label></div>
-      <div class="row"><input type="checkbox" id="areasToggle" checked><label for="areasToggle">Working Areas / MOAs</label></div>
-    </section>
-  </details>
-    
-  <details>
-  <summary>Mission Builder</summary>
-  <section>
-    <label for="departureAirportSelect">Departure Airport</label>
-<select id="departureAirportSelect"></select>
+    <details open>
+      <summary>Layers</summary>
+      <section>
+        <div class="row"><input type="checkbox" id="pointsToggle" checked><label for="pointsToggle">Waypoints / Airports</label></div>
+        <div class="row"><input type="checkbox" id="routesToggle" checked><label for="routesToggle">Routes / Lines</label></div>
+        <div class="row"><input type="checkbox" id="areasToggle" checked><label for="areasToggle">Working Areas / MOAs</label></div>
+      </section>
+    </details>
 
-<label for="departureRunwaySelect">Departure Runway</label>
-<select id="departureRunwaySelect"></select>
+    <details>
+      <summary>Mission Builder</summary>
+      <section>
+        <label for="departureAirportSelect">Departure Airport</label>
+        <select id="departureAirportSelect"></select>
 
-<label for="departureRouteSelect">Departure Route</label>
-<select id="departureRouteSelect"></select>
+        <label for="departureRunwaySelect">Departure Runway</label>
+        <select id="departureRunwaySelect"></select>
 
-<label for="destinationSelect">MOA / OLF / Destination</label>
-<select id="destinationSelect"></select>
+        <label for="departureRouteSelect">Departure Route</label>
+        <select id="departureRouteSelect"></select>
 
-<label for="destinationArrivalSelect">Destination Arrival</label>
-<select id="destinationArrivalSelect"></select>
+        <label for="destinationSelect">MOA / OLF / Destination</label>
+        <select id="destinationSelect"></select>
 
-<label for="destinationDepartureSelect">Destination Departure</label>
-<select id="destinationDepartureSelect"></select>
+        <label for="destinationArrivalSelect">Destination Arrival</label>
+        <select id="destinationArrivalSelect"></select>
 
-<label for="recoveryAirportSelect">Recovery Airport</label>
-<select id="recoveryAirportSelect"></select>
+        <label for="destinationDepartureSelect">Destination Departure</label>
+        <select id="destinationDepartureSelect"></select>
 
-<label for="recoveryArrivalSelect">Recovery Arrival</label>
-<select id="recoveryArrivalSelect"></select>
+        <label for="recoveryAirportSelect">Recovery Airport</label>
+        <select id="recoveryAirportSelect"></select>
 
-<label for="recoveryRunwaySelect">Recovery Runway</label>
-<select id="recoveryRunwaySelect"></select>
+        <label for="recoveryArrivalSelect">Recovery Arrival</label>
+        <select id="recoveryArrivalSelect"></select>
 
-<div class="buttonRow">
-  <button id="showMissionBtn">Show Mission</button>
-  <button id="stopFlyBtn">Stop</button>
-</div>
+        <label for="recoveryRunwaySelect">Recovery Runway</label>
+        <select id="recoveryRunwaySelect"></select>
 
-    <div class="small">
-      Select departure, destination, and arrival/recovery. App will highlight the selected mission legs.
-    </div>
-  </section>
-</details>
+        <div class="buttonRow">
+          <button id="showMissionBtn">Show Mission</button>
+          <button id="stopFlyBtn">Stop</button>
+        </div>
 
-  <details open id="selectedPanel">
-    <summary>Selected</summary>
-    <section>
-      <div id="infoBox" class="info">Click a point, route, or area.</div>
-    </section>
-  </details>
-</aside>
+        <div class="small">
+          Select departure, destination, and arrival/recovery. App will highlight the selected mission legs.
+        </div>
+      </section>
+    </details>
+
+    <details open id="selectedPanel">
+      <summary>Selected</summary>
+      <section>
+        <div id="infoBox" class="info">Click a point, route, or area.</div>
+      </section>
+    </details>
+  </aside>
 
   <script src="courseRulesData.js"></script>
   <script src="lineMetadata.js"></script>
+  <script src="airports.js"></script>
+  <script src="points.js"></script>
+  <script src="polygons.js"></script>
+  <script src="tw4Data.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
