@@ -144,33 +144,30 @@ function addFeature(rawFeature) {
   const floorMeters = (f.floorFt || 0) * 0.3048;
   const ceilingMeters = (f.ceilingFt || f.floorFt || 0) * 0.3048;
 
-  const positions = coords.map(c =>
-    Cesium.Cartesian3.fromDegrees(c[0], c[1])
-  );
+const cleanCoords =
+  coords.length > 1 &&
+  coords[0][0] === coords[coords.length - 1][0] &&
+  coords[0][1] === coords[coords.length - 1][1]
+    ? coords.slice(0, -1)
+    : coords;
 
-  entity = viewer.entities.add({
-    ...common,
-    polygon: {
-      hierarchy: new Cesium.PolygonHierarchy(positions),
-      height: floorMeters,
-      extrudedHeight: ceilingMeters,
-      material: catColor.withAlpha(0.18),
-      outline: true,
-      outlineColor: catColor.withAlpha(0.95),
-      closeTop: true,
-      closeBottom: true,
-      perPositionHeight: false
-    },
-    polyline: {
-      positions: coords.map(c =>
-        Cesium.Cartesian3.fromDegrees(c[0], c[1], ceilingMeters)
-      ),
-      width: 3,
-      material: catColor.withAlpha(0.95),
-      clampToGround: false
-    }
-  });
-}
+const positions = cleanCoords.map(c =>
+  Cesium.Cartesian3.fromDegrees(c[0], c[1])
+);
+
+entity = viewer.entities.add({
+  ...common,
+  polygon: {
+    hierarchy: new Cesium.PolygonHierarchy(positions),
+    height: ceilingMeters,
+    extrudedHeight: floorMeters,
+    material: catColor.withAlpha(0.25),
+    outline: true,
+    outlineColor: catColor,
+    closeTop: true,
+    closeBottom: true
+  }
+});
 
   if (entity) {
     entity.tw4Feature = f;
