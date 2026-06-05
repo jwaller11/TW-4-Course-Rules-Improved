@@ -141,20 +141,15 @@ function addFeature(rawFeature) {
     const positions = f.coordinates.map(c => Cesium.Cartesian3.fromDegrees(c[0], c[1], 0));
     const outlinePositions = [...positions, positions[0]];
 
+    // Outline-only rendering. No filled polygon, no extrusion.
+    // This prevents giant green sheets/walls from covering the map.
     entity = viewer.entities.add({
       ...common,
-      polygon: {
-        hierarchy: new Cesium.PolygonHierarchy(positions),
-        material: catColor.withAlpha(0.18),
-        outline: true,
-        outlineColor: catColor,
-        height: 0
-      },
       polyline: {
         positions: outlinePositions,
-        width: 2,
-        material: catColor.withAlpha(0.9),
-        clampToGround: false
+        width: 3,
+        material: catColor.withAlpha(0.95),
+        clampToGround: true
       }
     });
   }
