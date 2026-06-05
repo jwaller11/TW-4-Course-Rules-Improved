@@ -351,3 +351,6 @@ document.getElementById("showAllLinesBtn").addEventListener("click", showAllLine
 buildLineInspector();
 corpusHome();
 console.log(`Loaded ${DATA.featureCount} TW-4 features`, DATA);
+document.getElementById("togglePanelBtn").addEventListener("click", () => {
+  document.getElementById("panel").classList.toggle("collapsed");
+});
