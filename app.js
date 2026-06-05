@@ -1,4 +1,6 @@
 // TW-4 Course Rules Cesium Operational App
+// Rebuilt app.js: stable routes/points + guaranteed visible 3D MOA wireframes
+
 const CESIUM_ION_TOKEN = "";
 if (CESIUM_ION_TOKEN) Cesium.Ion.defaultAccessToken = CESIUM_ION_TOKEN;
 
@@ -7,6 +9,10 @@ const LINE_METADATA = window.TW4_LINE_METADATA || {};
 const AIRPORTS = window.TW4_AIRPORTS || [];
 const POINTS = window.TW4_POINTS || [];
 const POLYGONS = window.TW4_POLYGONS || [];
+
+// This is visualization-only. It makes MOA vertical blocks easier to see.
+// Actual floor/ceiling values in the info box remain unchanged.
+const MOA_ALTITUDE_VISUAL_SCALE = 4;
 
 const viewer = new Cesium.Viewer("cesiumContainer", {
   timeline: true,
@@ -104,6 +110,7 @@ function descriptionForFeature(f) {
   if (f.displayGroup) pieces.push(`Group: ${f.displayGroup}`);
   if (f.from || f.to) pieces.push(`From/To: ${f.from || ""} → ${f.to || ""}`);
   if (f.floorFt || f.ceilingFt) pieces.push(`Block: ${f.floorFt || 0}–${f.ceilingFt || 0} ft`);
+  if (f.type === "polygon") pieces.push(`Visual vertical scale: ${MOA_ALTITUDE_VISUAL_SCALE}x`);
 
   if (f.type === "line" && Array.isArray(f.coordinates)) {
     const alts = f.coordinates.map(c => c[2] || 0).filter(a => a > 0);
@@ -120,7 +127,6 @@ function descriptionForFeature(f) {
 function cleanPolygonCoordinates(coords) {
   if (!Array.isArray(coords)) return [];
 
-  // Remove bad rows and bad pasted coordinates.
   const valid = coords.filter(c =>
     Array.isArray(c) &&
     Number.isFinite(c[0]) &&
@@ -139,6 +145,12 @@ function cleanPolygonCoordinates(coords) {
   }
 
   return valid;
+}
+
+function addPolygonHelperEntity(feature, entity) {
+  entity.tw4Feature = feature;
+  entitiesByType.polygon.push(entity);
+  return entity;
 }
 
 function addFeature(rawFeature) {
@@ -204,72 +216,88 @@ function addFeature(rawFeature) {
     const coords = cleanPolygonCoordinates(f.coordinates || []);
     if (coords.length < 3) return;
 
-    const floorMeters = Math.max(0, (f.floorFt || 0) * 0.3048);
-    const ceilingMeters = Math.max(floorMeters + 1, (f.ceilingFt || f.floorFt || 0) * 0.3048);
+    const floorMeters = Math.max(0, (f.floorFt || 0) * 0.3048 * MOA_ALTITUDE_VISUAL_SCALE);
+    const ceilingMeters = Math.max(floorMeters + 1, (f.ceilingFt || f.floorFt || 0) * 0.3048 * MOA_ALTITUDE_VISUAL_SCALE);
 
-    const hierarchyPositions = coords.map(c =>
-      Cesium.Cartesian3.fromDegrees(c[0], c[1])
-    );
-
-    const bottom = coords.map(c =>
-      Cesium.Cartesian3.fromDegrees(c[0], c[1], floorMeters)
-    );
-
-    const top = coords.map(c =>
-      Cesium.Cartesian3.fromDegrees(c[0], c[1], ceilingMeters)
-    );
+    const bottom = coords.map(c => Cesium.Cartesian3.fromDegrees(c[0], c[1], floorMeters));
+    const top = coords.map(c => Cesium.Cartesian3.fromDegrees(c[0], c[1], ceilingMeters));
 
     const bottomClosed = [...bottom, bottom[0]];
     const topClosed = [...top, top[0]];
 
-    // Main 3D MOA volume.
+    // Invisible pickable anchor point so each MOA has a main entity.
+    const centerLon = coords.reduce((sum, c) => sum + c[0], 0) / coords.length;
+    const centerLat = coords.reduce((sum, c) => sum + c[1], 0) / coords.length;
+
     entity = viewer.entities.add({
       ...common,
-      polygon: {
-        hierarchy: new Cesium.PolygonHierarchy(hierarchyPositions),
-        height: ceilingMeters,
-        extrudedHeight: floorMeters,
-        material: catColor.withAlpha(0.20),
-        outline: true,
-        outlineColor: catColor.withAlpha(0.95),
-        closeTop: true,
-        closeBottom: true
+      position: Cesium.Cartesian3.fromDegrees(centerLon, centerLat, ceilingMeters),
+      point: {
+        pixelSize: 6,
+        color: catColor.withAlpha(0.9),
+        outlineColor: Cesium.Color.BLACK,
+        outlineWidth: 1
+      },
+      label: {
+        text: f.name || "",
+        font: "12px sans-serif",
+        fillColor: Cesium.Color.WHITE,
+        outlineColor: Cesium.Color.BLACK,
+        outlineWidth: 3,
+        style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+        showBackground: true,
+        backgroundColor: Cesium.Color.BLACK.withAlpha(0.35),
+        distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 190000)
       }
     });
 
-    // Bottom outline.
-    viewer.entities.add({
+    // Bottom boundary.
+    addPolygonHelperEntity(f, viewer.entities.add({
       ...common,
       polyline: {
         positions: bottomClosed,
         width: 2,
-        material: catColor.withAlpha(0.55),
+        material: catColor.withAlpha(0.60),
         clampToGround: false
       }
-    });
+    }));
 
-    // Top outline.
-    viewer.entities.add({
+    // Top boundary.
+    addPolygonHelperEntity(f, viewer.entities.add({
       ...common,
       polyline: {
         positions: topClosed,
-        width: 3,
-        material: catColor.withAlpha(0.95),
+        width: 4,
+        material: catColor.withAlpha(1.0),
         clampToGround: false
       }
-    });
+    }));
 
-    // Vertical corner lines.
+    // Vertical lines at every coordinate.
     for (let i = 0; i < bottom.length; i++) {
-      viewer.entities.add({
+      addPolygonHelperEntity(f, viewer.entities.add({
         ...common,
         polyline: {
           positions: [bottom[i], top[i]],
-          width: 1,
-          material: catColor.withAlpha(0.65),
+          width: 2,
+          material: catColor.withAlpha(0.75),
           clampToGround: false
         }
-      });
+      }));
+    }
+
+    // Add faint diagonal cross braces so it is obvious this is a 3D volume.
+    for (let i = 0; i < bottom.length; i++) {
+      const next = (i + 1) % bottom.length;
+      addPolygonHelperEntity(f, viewer.entities.add({
+        ...common,
+        polyline: {
+          positions: [bottom[i], top[next]],
+          width: 1,
+          material: catColor.withAlpha(0.30),
+          clampToGround: false
+        }
+      }));
     }
   }
 
@@ -308,10 +336,6 @@ function setOptions(selectId, items, labelFn, valueFn = x => x) {
     opt.textContent = labelFn(item);
     select.appendChild(opt);
   });
-}
-
-function uniqueSorted(arr) {
-  return [...new Set(arr.filter(Boolean))].sort();
 }
 
 function populateMissionBuilder() {
@@ -576,3 +600,4 @@ corpusHome();
 console.log(
   `Loaded ${DATA.features.length} KML features, ${routes.length} routes, ${AIRPORTS.length} airports, ${POINTS.length} waypoints, ${POLYGONS.length} polygons`
 );
+console.log(`MOA visual altitude scale: ${MOA_ALTITUDE_VISUAL_SCALE}x`);
