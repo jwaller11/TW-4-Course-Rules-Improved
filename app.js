@@ -263,6 +263,17 @@ document.getElementById("topDownBtn")?.addEventListener("click", birdseye);
 document.getElementById("tiltBtn")?.addEventListener("click", tiltView);
 document.getElementById("stopFlyBtn")?.addEventListener("click", stopFlythrough);
 document.getElementById("togglePanelBtn")?.addEventListener("click", () => document.getElementById("panel").classList.toggle("collapsed"));
+document.getElementById("departureAirportSelect").addEventListener("change", updateDepartureRunways);
+document.getElementById("departureRunwaySelect").addEventListener("change", updateDepartureRoutes);
 
+document.getElementById("destinationSelect").addEventListener("change", updateDestinationArrivals);
+
+document.getElementById("recoveryAirportSelect").addEventListener("change", updateRecoveryRunways);
+document.getElementById("recoveryRunwaySelect").addEventListener("change", updateRecoveryArrivals);
+
+document.getElementById("showMissionBtn").addEventListener("click", showSelectedMission);
+
+populateMissionBuilder();
 corpusHome();
 console.log(`Loaded ${DATA.features.length} KML features, ${routes.length} routes, ${AIRPORTS.length} airports, ${POINTS.length} waypoints, ${POLYGONS.length} polygons`);
+DATA.features.forEach(addFeature);
