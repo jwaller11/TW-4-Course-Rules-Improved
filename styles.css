@@ -48,3 +48,44 @@ summary:hover {
 details > section {
   margin-top: 8px;
 }
+input[type="text"] {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 4px 0;
+  padding: 9px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.18);
+  background: #132236;
+  color: white;
+}
+
+label {
+  display: block;
+  margin-top: 8px;
+  margin-bottom: 4px;
+  font-size: 13px;
+  color: #cfe7ff;
+}
+
+#lineSelect {
+  height: 180px;
+}
+#togglePanelBtn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 36px;
+  height: 36px;
+  z-index: 1000;
+}
+
+#panel.collapsed {
+  width: 60px;
+  overflow: hidden;
+}
+
+#panel.collapsed details,
+#panel.collapsed h1,
+#panel.collapsed .small {
+  display: none;
+}
