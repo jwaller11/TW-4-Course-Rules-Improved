@@ -137,84 +137,57 @@ function addFeature(rawFeature) {
     routes.push({ feature: f, entity });
   }
 
-if (f.type === "polygon") {
-  const floorMeters = (f.floorFt || 0) * 0.3048;
-  const ceilingMeters = (f.ceilingFt || f.floorFt || 0) * 0.3048;
+  if (f.type === "polygon") {
+    const coords = f.coordinates || [];
+    if (!coords.length) return;
 
-  const bottom = f.coordinates.map(c =>
-    Cesium.Cartesian3.fromDegrees(c[0], c[1], floorMeters)
-  );
+    const floorMeters = (f.floorFt || 0) * 0.3048;
+    const ceilingMeters = (f.ceilingFt || f.floorFt || 0) * 0.3048;
 
-  const top = f.coordinates.map(c =>
-    Cesium.Cartesian3.fromDegrees(c[0], c[1], ceilingMeters)
-  );
+    const bottom = coords.map(c =>
+      Cesium.Cartesian3.fromDegrees(c[0], c[1], floorMeters)
+    );
 
-  const bottomClosed = [...bottom, bottom[0]];
-  const topClosed = [...top, top[0]];
+    const top = coords.map(c =>
+      Cesium.Cartesian3.fromDegrees(c[0], c[1], ceilingMeters)
+    );
 
-  entity = viewer.entities.add({
-    ...common,
-    polyline: {
-      positions: bottomClosed,
-      width: 2,
-      material: catColor.withAlpha(0.45),
-      clampToGround: false
-    }
-  });
+    const bottomClosed = [...bottom, bottom[0]];
+    const topClosed = [...top, top[0]];
 
-  viewer.entities.add({
-    ...common,
-    polyline: {
-      positions: topClosed,
-      width: 3,
-      material: catColor.withAlpha(0.95),
-      clampToGround: false
-    }
-  });
-
-  for (let i = 0; i < bottom.length; i++) {
-    viewer.entities.add({
+    entity = viewer.entities.add({
       ...common,
       polyline: {
-        positions: [bottom[i], top[i]],
-        width: 1,
-        material: catColor.withAlpha(0.55),
+        positions: bottomClosed,
+        width: 2,
+        material: catColor.withAlpha(0.45),
         clampToGround: false
       }
     });
+
+    viewer.entities.add({
+      ...common,
+      polyline: {
+        positions: topClosed,
+        width: 3,
+        material: catColor.withAlpha(0.95),
+        clampToGround: false
+      }
+    });
+
+    for (let i = 0; i < bottom.length; i++) {
+      viewer.entities.add({
+        ...common,
+        polyline: {
+          positions: [bottom[i], top[i]],
+          width: 1,
+          material: catColor.withAlpha(0.55),
+          clampToGround: false
+        }
+      });
+    }
   }
-}
 
-  entity = viewer.entities.add({
-    ...common,
-    polyline: {
-      positions: bottomClosed,
-      width: 2,
-      material: catColor.withAlpha(0.55),
-      clampToGround: false
-    }
-  });
-
-  viewer.entities.add({
-    ...common,
-    polyline: {
-      positions: topClosed,
-      width: 3,
-      material: catColor.withAlpha(0.95),
-      clampToGround: false
-    }
-  });
-
-  viewer.entities.add({
-    ...common,
-    polyline: {
-      positions: verticals,
-      width: 1,
-      material: catColor.withAlpha(0.5),
-      clampToGround: false
-    }
-  });
-}
   if (entity) {
     entity.tw4Feature = f;
     if (entitiesByType[f.type]) entitiesByType[f.type].push(entity);
