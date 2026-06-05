@@ -138,55 +138,39 @@ function addFeature(rawFeature) {
   }
 
   if (f.type === "polygon") {
-    const coords = f.coordinates || [];
-    if (!coords.length) return;
+  const coords = f.coordinates || [];
+  if (!coords.length) return;
 
-    const floorMeters = (f.floorFt || 0) * 0.3048;
-    const ceilingMeters = (f.ceilingFt || f.floorFt || 0) * 0.3048;
+  const floorMeters = (f.floorFt || 0) * 0.3048;
+  const ceilingMeters = (f.ceilingFt || f.floorFt || 0) * 0.3048;
 
-    const bottom = coords.map(c =>
-      Cesium.Cartesian3.fromDegrees(c[0], c[1], floorMeters)
-    );
+  const positions = coords.map(c =>
+    Cesium.Cartesian3.fromDegrees(c[0], c[1])
+  );
 
-    const top = coords.map(c =>
-      Cesium.Cartesian3.fromDegrees(c[0], c[1], ceilingMeters)
-    );
-
-    const bottomClosed = [...bottom, bottom[0]];
-    const topClosed = [...top, top[0]];
-
-    entity = viewer.entities.add({
-      ...common,
-      polyline: {
-        positions: bottomClosed,
-        width: 2,
-        material: catColor.withAlpha(0.45),
-        clampToGround: false
-      }
-    });
-
-    viewer.entities.add({
-      ...common,
-      polyline: {
-        positions: topClosed,
-        width: 3,
-        material: catColor.withAlpha(0.95),
-        clampToGround: false
-      }
-    });
-
-    for (let i = 0; i < bottom.length; i++) {
-      viewer.entities.add({
-        ...common,
-        polyline: {
-          positions: [bottom[i], top[i]],
-          width: 1,
-          material: catColor.withAlpha(0.55),
-          clampToGround: false
-        }
-      });
+  entity = viewer.entities.add({
+    ...common,
+    polygon: {
+      hierarchy: new Cesium.PolygonHierarchy(positions),
+      height: floorMeters,
+      extrudedHeight: ceilingMeters,
+      material: catColor.withAlpha(0.18),
+      outline: true,
+      outlineColor: catColor.withAlpha(0.95),
+      closeTop: true,
+      closeBottom: true,
+      perPositionHeight: false
+    },
+    polyline: {
+      positions: coords.map(c =>
+        Cesium.Cartesian3.fromDegrees(c[0], c[1], ceilingMeters)
+      ),
+      width: 3,
+      material: catColor.withAlpha(0.95),
+      clampToGround: false
     }
-  }
+  });
+}
 
   if (entity) {
     entity.tw4Feature = f;
