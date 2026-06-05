@@ -137,7 +137,7 @@ function addFeature(rawFeature) {
     routes.push({ feature: f, entity });
   }
 
-  if (f.type === "polygon") {
+if (f.type === "polygon") {
   const floorMeters = (f.floorFt || 0) * 0.3048;
   const ceilingMeters = (f.ceilingFt || f.floorFt || 0) * 0.3048;
 
@@ -152,10 +152,38 @@ function addFeature(rawFeature) {
   const bottomClosed = [...bottom, bottom[0]];
   const topClosed = [...top, top[0]];
 
-  const verticals = [];
+  entity = viewer.entities.add({
+    ...common,
+    polyline: {
+      positions: bottomClosed,
+      width: 2,
+      material: catColor.withAlpha(0.45),
+      clampToGround: false
+    }
+  });
+
+  viewer.entities.add({
+    ...common,
+    polyline: {
+      positions: topClosed,
+      width: 3,
+      material: catColor.withAlpha(0.95),
+      clampToGround: false
+    }
+  });
+
   for (let i = 0; i < bottom.length; i++) {
-    verticals.push(bottom[i], top[i]);
+    viewer.entities.add({
+      ...common,
+      polyline: {
+        positions: [bottom[i], top[i]],
+        width: 1,
+        material: catColor.withAlpha(0.55),
+        clampToGround: false
+      }
+    });
   }
+}
 
   entity = viewer.entities.add({
     ...common,
