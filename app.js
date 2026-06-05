@@ -5,6 +5,7 @@ const CESIUM_ION_TOKEN = "";
 if (CESIUM_ION_TOKEN) Cesium.Ion.defaultAccessToken = CESIUM_ION_TOKEN;
 
 const DATA = window.TW4_COURSE_RULES_DATA;
+const LINE_METADATA = window.TW4_LINE_METADATA || {};
 const viewer = new Cesium.Viewer("cesiumContainer", {
   timeline: true,
   animation: true,
@@ -70,9 +71,17 @@ function descriptionForFeature(f) {
   }
   return `${f.name}\n${path}${altText}\n\n${f.description || "No notes in source KML."}`;
 }
+function mergeMetadata(f) {
+  if (f.type !== "line") return f;
+  return {
+    ...f,
+    ...(LINE_METADATA[f.id] || {})
+  };
+}
 
-function addFeature(f) {
-  const catColor = categoryColor(f.category);
+function addFeature(rawFeature) {
+  const f = mergeMetadata(rawFeature);
+  const catColor = categoryColor(f.displayGroup || f.category || f.type);
   let entity;
   const common = {
     name: f.name,
@@ -187,7 +196,15 @@ function buildRouteSelect() {
 }
 function lineLabel(route) {
   const f = route.feature;
-  return `${f.id} | ${f.name} | ${(f.folderPath || []).join(" > ")}`;
+  return [
+    f.id,
+    f.name,
+    f.routeType,
+    f.airport,
+    f.runway,
+    f.displayGroup,
+    f.routeFamily
+  ].filter(Boolean).join(" | ");
 }
 
 function buildLineInspector() {
