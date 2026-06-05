@@ -12,7 +12,7 @@ const POLYGONS = window.TW4_POLYGONS || [];
 
 // This is visualization-only. It makes MOA vertical blocks easier to see.
 // Actual floor/ceiling values in the info box remain unchanged.
-const MOA_ALTITUDE_VISUAL_SCALE = 4;
+const MOA_ALTITUDE_VISUAL_SCALE = 1;
 
 const viewer = new Cesium.Viewer("cesiumContainer", {
   timeline: true,
@@ -251,17 +251,6 @@ function addFeature(rawFeature) {
       }
     });
 
-    // Bottom boundary.
-    addPolygonHelperEntity(f, viewer.entities.add({
-      ...common,
-      polyline: {
-        positions: bottomClosed,
-        width: 2,
-        material: catColor.withAlpha(0.60),
-        clampToGround: false
-      }
-    }));
-
     // Top boundary.
     addPolygonHelperEntity(f, viewer.entities.add({
       ...common,
@@ -289,15 +278,20 @@ function addFeature(rawFeature) {
     // Add faint diagonal cross braces so it is obvious this is a 3D volume.
     for (let i = 0; i < bottom.length; i++) {
       const next = (i + 1) % bottom.length;
-      addPolygonHelperEntity(f, viewer.entities.add({
-        ...common,
-        polyline: {
-          positions: [bottom[i], top[next]],
-          width: 1,
-          material: catColor.withAlpha(0.30),
-          clampToGround: false
-        }
-      }));
+addPolygonHelperEntity(f, viewer.entities.add({
+  ...common,
+  polygon: {
+    hierarchy: new Cesium.PolygonHierarchy(
+      coords.map(c => Cesium.Cartesian3.fromDegrees(c[0], c[1]))
+    ),
+    height: ceilingMeters,
+    extrudedHeight: floorMeters,
+    material: catColor.withAlpha(0.12),
+    outline: false,
+    closeTop: true,
+    closeBottom: true
+  }
+}));
     }
   }
 
