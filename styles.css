@@ -1,87 +1,119 @@
 html, body, #cesiumContainer {
-  width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
 }
+
 #panel {
-  position: absolute; top: 14px; left: 14px; width: 340px; max-height: calc(100vh - 28px);
-  overflow: auto; color: #f4f7fb; background: rgba(12, 20, 31, 0.88);
-  border: 1px solid rgba(255,255,255,0.18); border-radius: 14px; padding: 14px;
-  box-shadow: 0 12px 34px rgba(0,0,0,0.35); backdrop-filter: blur(8px);
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  width: 330px;
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+  z-index: 10;
+  background: rgba(20, 24, 28, 0.92);
+  color: white;
+  border-radius: 10px;
+  padding: 12px;
+  box-sizing: border-box;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.35);
 }
-h1 { font-size: 19px; margin: 0 0 6px; }
-h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; margin: 18px 0 8px; color: #bcd2ee; }
-button, select {
-  width: 100%; box-sizing: border-box; margin: 4px 0; padding: 9px 10px;
-  border-radius: 10px; border: 1px solid rgba(255,255,255,.18);
-  background: #1d314b; color: #fff; font-size: 14px;
+
+#togglePanelBtn {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  width: 38px;
+  height: 34px;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.16);
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  margin-bottom: 8px;
 }
-button:hover { background: #284562; cursor: pointer; }
-select { background: #132236; }
-.row { display: flex; align-items: center; gap: 8px; margin: 7px 0; }
-.row input { transform: scale(1.1); }
-.row label { font-size: 14px; }
-.buttonRow { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.small { font-size: 12px; line-height: 1.35; color: #c9d4e1; }
-.info { font-size: 13px; line-height: 1.35; color: #e8eef7; background: rgba(255,255,255,0.06); padding: 10px; border-radius: 10px; white-space: pre-wrap; }
-.category { border-top: 1px solid rgba(255,255,255,.1); padding-top: 6px; margin-top: 6px; }
-.cesium-viewer-bottom { display: none; }
+
+#panel.collapsed {
+  width: 62px;
+  height: 58px;
+  overflow: hidden;
+}
+
+#panel.collapsed #panelContent {
+  display: none;
+}
+
+#panel h1 {
+  font-size: 20px;
+  margin: 4px 0 8px;
+}
+
 details {
-  margin-top: 12px;
-  border-top: 1px solid rgba(255,255,255,0.12);
-  padding-top: 8px;
+  border-top: 1px solid rgba(255,255,255,0.18);
+  padding: 8px 0;
 }
 
 summary {
   cursor: pointer;
-  font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #cfe7ff;
-  padding: 6px 0;
 }
 
-summary:hover {
-  color: white;
-}
-
-details > section {
+section {
   margin-top: 8px;
 }
-input[type="text"] {
+
+button, select {
   width: 100%;
+  margin: 4px 0 8px;
   box-sizing: border-box;
-  margin: 4px 0;
-  padding: 9px 10px;
-  border-radius: 10px;
-  border: 1px solid rgba(255,255,255,.18);
-  background: #132236;
-  color: white;
+}
+
+select, button {
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.25);
+  padding: 7px;
 }
 
 label {
   display: block;
-  margin-top: 8px;
-  margin-bottom: 4px;
-  font-size: 13px;
-  color: #cfe7ff;
+  font-size: 12px;
+  opacity: 0.9;
+  margin-top: 6px;
 }
 
-#lineSelect {
-  height: 180px;
-}
-#panel {
-  transition: left 0.25s ease;
-}
-
-#panel.collapsed {
-  left: -320px;
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-#togglePanelBtn {
-  position: fixed;
-  left: 15px;
-  top: 15px;
-  width: 40px;
-  z-index: 9999;
+.row input {
+  width: auto;
+}
+
+.row label {
+  margin: 0;
+}
+
+.buttonRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.small {
+  font-size: 12px;
+  opacity: 0.78;
+  line-height: 1.35;
+}
+
+.info {
+  white-space: pre-wrap;
+  font-size: 12px;
+  line-height: 1.35;
 }
