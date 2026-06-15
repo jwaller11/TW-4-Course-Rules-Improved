@@ -595,27 +595,135 @@ function getRouteEntityByIndex(idx) {
   return route ? [route.entity] : [];
 }
 
-function populateQuickViewItems() {
+let selectedQuickViewGroup = "";
+
+function routeFamilyName(r) {
+  return r.meta.routeFamily || r.meta.name || r.feature.routeFamily || r.feature.name || "Other";
+}
+
+function populateQuickViewGroups() {
+  const type = document.getElementById("quickViewTypeSelect")?.value;
+  const container = document.getElementById("quickViewGroups");
+  const itemSelect = document.getElementById("quickViewItemSelect");
+  if (!container || !itemSelect) return;
+
+  selectedQuickViewGroup = "";
+  container.innerHTML = "";
+  itemSelect.innerHTML = `<option value="">-- Select group first --</option>`;
+
+  let groups = [];
+
+  if (type === "departures") {
+    groups = [...new Set(
+      getRouteMetaList()
+        .filter(r => r.meta.routeType === "departure" || r.feature.routeType === "departure")
+        .map(routeFamilyName)
+    )];
+  }
+
+  if (type === "arrivals") {
+    groups = [...new Set(
+      getRouteMetaList()
+        .filter(r => r.meta.routeType === "arrival" || r.feature.routeType === "arrival")
+        .map(routeFamilyName)
+    )];
+  }
+
+  if (type === "workingAreas") {
+    groups = [...new Set(
+      POLYGONS.map(p => {
+        const name = p.name || p.id || "";
+        if (name.toLowerCase().includes("mustang")) return "Mustang";
+        if (name.toLowerCase().includes("kings")) return "Kings 4";
+        if (name.toLowerCase().includes("foxtrot")) return "Foxtrot";
+        return p.category || "Other";
+      })
+    )];
+  }
+
+  if (type === "airfields") {
+    groups = AIRPORTS.map(a => a.airportCode);
+  }
+
+  groups.sort().forEach(group => {
+    const btn = document.createElement("button");
+    btn.textContent = group;
+
+    btn.onclick = () => {
+      selectedQuickViewGroup = group;
+
+      [...container.querySelectorAll("button")].forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+
+      populateQuickViewItems(group);
+    };
+
+    container.appendChild(btn);
+  });
+}
+
+function populateQuickViewItems(groupName) {
   const type = document.getElementById("quickViewTypeSelect")?.value;
   const itemSelect = document.getElementById("quickViewItemSelect");
   if (!itemSelect) return;
 
   itemSelect.innerHTML = "";
+
   const blank = document.createElement("option");
   blank.value = "";
   blank.textContent = "-- Select --";
   itemSelect.appendChild(blank);
 
+  const all = document.createElement("option");
+  all.value = `group:${type}:${groupName}`;
+  all.textContent = `All ${groupName}`;
+  itemSelect.appendChild(all);
+
   let items = [];
 
   if (type === "departures") {
     items = getRouteMetaList()
-      .filter(r => r.meta.routeType === "departure" || r.feature.routeType === "departure")
+      .filter(r => (r.meta.routeType === "departure" || r.feature.routeType === "departure"))
+      .filter(r => routeFamilyName(r) === groupName)
       .map(r => ({
         value: `route:${r.idx}`,
-        label: `${r.meta.airport || r.feature.airport || ""} ${r.meta.runway ? "RWY " + r.meta.runway + " " : ""}${r.meta.routeFamily || r.meta.name || r.feature.name}`
+        label: `${r.meta.runway ? "RWY " + r.meta.runway + " - " : ""}${r.meta.name || r.feature.name}`
       }));
   }
+
+  if (type === "arrivals") {
+    items = getRouteMetaList()
+      .filter(r => (r.meta.routeType === "arrival" || r.feature.routeType === "arrival"))
+      .filter(r => routeFamilyName(r) === groupName)
+      .map(r => ({
+        value: `route:${r.idx}`,
+        label: `${r.meta.runway ? "RWY " + r.meta.runway + " - " : ""}${r.meta.name || r.feature.name}`
+      }));
+  }
+
+  if (type === "workingAreas") {
+    items = POLYGONS
+      .filter(p => (p.name || "").toLowerCase().includes(groupName.toLowerCase().replace(" 4", "")))
+      .map(p => ({
+        value: `area:${p.id}`,
+        label: p.name || p.id
+      }));
+  }
+
+  if (type === "airfields") {
+    items = [{
+      value: `airport:${groupName}`,
+      label: `Show ${groupName}`
+    }];
+  }
+
+  items.sort((a, b) => a.label.localeCompare(b.label)).forEach(item => {
+    const opt = document.createElement("option");
+    opt.value = item.value;
+    opt.textContent = item.label;
+    itemSelect.appendChild(opt);
+  });
+}
 
   if (type === "arrivals") {
     items = getRouteMetaList()
@@ -674,7 +782,7 @@ function resetQuickView() {
 }
 
 
-document.getElementById("quickViewTypeSelect")?.addEventListener("change", populateQuickViewItems);
+document.getElementById("quickViewTypeSelect")?.addEventListener("change", populateQuickViewGroups);
 document.getElementById("showQuickViewBtn")?.addEventListener("click", showQuickViewSelection);
 document.getElementById("resetQuickViewBtn")?.addEventListener("click", resetQuickView);
 
