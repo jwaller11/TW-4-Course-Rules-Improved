@@ -1,6 +1,4 @@
 // TW-4 Course Rules Cesium Operational App
-// Rebuilt app.js: stable routes/points + guaranteed visible 3D MOA wireframes
-
 const CESIUM_ION_TOKEN = "";
 if (CESIUM_ION_TOKEN) Cesium.Ion.defaultAccessToken = CESIUM_ION_TOKEN;
 
@@ -9,10 +7,6 @@ const LINE_METADATA = window.TW4_LINE_METADATA || {};
 const AIRPORTS = window.TW4_AIRPORTS || [];
 const POINTS = window.TW4_POINTS || [];
 const POLYGONS = window.TW4_POLYGONS || [];
-
-// This is visualization-only. It makes MOA vertical blocks easier to see.
-// Actual floor/ceiling values in the info box remain unchanged.
-const MOA_ALTITUDE_VISUAL_SCALE = 1;
 
 const viewer = new Cesium.Viewer("cesiumContainer", {
   timeline: true,
@@ -110,7 +104,6 @@ function descriptionForFeature(f) {
   if (f.displayGroup) pieces.push(`Group: ${f.displayGroup}`);
   if (f.from || f.to) pieces.push(`From/To: ${f.from || ""} → ${f.to || ""}`);
   if (f.floorFt || f.ceilingFt) pieces.push(`Block: ${f.floorFt || 0}–${f.ceilingFt || 0} ft`);
-  if (f.type === "polygon") pieces.push(`Visual vertical scale: ${MOA_ALTITUDE_VISUAL_SCALE}x`);
 
   if (f.type === "line" && Array.isArray(f.coordinates)) {
     const alts = f.coordinates.map(c => c[2] || 0).filter(a => a > 0);
@@ -127,6 +120,7 @@ function descriptionForFeature(f) {
 function cleanPolygonCoordinates(coords) {
   if (!Array.isArray(coords)) return [];
 
+  // Remove bad rows and bad pasted coordinates.
   const valid = coords.filter(c =>
     Array.isArray(c) &&
     Number.isFinite(c[0]) &&
@@ -145,12 +139,6 @@ function cleanPolygonCoordinates(coords) {
   }
 
   return valid;
-}
-
-function addPolygonHelperEntity(feature, entity) {
-  entity.tw4Feature = feature;
-  entitiesByType.polygon.push(entity);
-  return entity;
 }
 
 function addFeature(rawFeature) {
@@ -216,82 +204,72 @@ function addFeature(rawFeature) {
     const coords = cleanPolygonCoordinates(f.coordinates || []);
     if (coords.length < 3) return;
 
-    const floorMeters = Math.max(0, (f.floorFt || 0) * 0.3048 * MOA_ALTITUDE_VISUAL_SCALE);
-    const ceilingMeters = Math.max(floorMeters + 1, (f.ceilingFt || f.floorFt || 0) * 0.3048 * MOA_ALTITUDE_VISUAL_SCALE);
+    const floorMeters = Math.max(0, (f.floorFt || 0) * 0.3048);
+    const ceilingMeters = Math.max(floorMeters + 1, (f.ceilingFt || f.floorFt || 0) * 0.3048);
 
-    const bottom = coords.map(c => Cesium.Cartesian3.fromDegrees(c[0], c[1], floorMeters));
-    const top = coords.map(c => Cesium.Cartesian3.fromDegrees(c[0], c[1], ceilingMeters));
+    const hierarchyPositions = coords.map(c =>
+      Cesium.Cartesian3.fromDegrees(c[0], c[1])
+    );
+
+    const bottom = coords.map(c =>
+      Cesium.Cartesian3.fromDegrees(c[0], c[1], floorMeters)
+    );
+
+    const top = coords.map(c =>
+      Cesium.Cartesian3.fromDegrees(c[0], c[1], ceilingMeters)
+    );
 
     const bottomClosed = [...bottom, bottom[0]];
     const topClosed = [...top, top[0]];
 
-    // Invisible pickable anchor point so each MOA has a main entity.
-    const centerLon = coords.reduce((sum, c) => sum + c[0], 0) / coords.length;
-    const centerLat = coords.reduce((sum, c) => sum + c[1], 0) / coords.length;
-
+    // Main 3D MOA volume.
     entity = viewer.entities.add({
       ...common,
-      position: Cesium.Cartesian3.fromDegrees(centerLon, centerLat, ceilingMeters),
-      point: {
-        pixelSize: 6,
-        color: catColor.withAlpha(0.9),
-        outlineColor: Cesium.Color.BLACK,
-        outlineWidth: 1
-      },
-      label: {
-        text: f.name || "",
-        font: "12px sans-serif",
-        fillColor: Cesium.Color.WHITE,
-        outlineColor: Cesium.Color.BLACK,
-        outlineWidth: 3,
-        style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-        showBackground: true,
-        backgroundColor: Cesium.Color.BLACK.withAlpha(0.35),
-        distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 190000)
+      polygon: {
+        hierarchy: new Cesium.PolygonHierarchy(hierarchyPositions),
+        height: ceilingMeters,
+        extrudedHeight: floorMeters,
+        material: catColor.withAlpha(0.20),
+        outline: true,
+        outlineColor: catColor.withAlpha(0.95),
+        closeTop: true,
+        closeBottom: true
       }
     });
 
-    // Top boundary.
-    addPolygonHelperEntity(f, viewer.entities.add({
+    // Bottom outline.
+    viewer.entities.add({
+      ...common,
+      polyline: {
+        positions: bottomClosed,
+        width: 2,
+        material: catColor.withAlpha(0.55),
+        clampToGround: false
+      }
+    });
+
+    // Top outline.
+    viewer.entities.add({
       ...common,
       polyline: {
         positions: topClosed,
-        width: 4,
-        material: catColor.withAlpha(1.0),
+        width: 3,
+        material: catColor.withAlpha(0.95),
         clampToGround: false
       }
-    }));
+    });
 
-    // Vertical lines at every coordinate.
+    // Vertical corner lines.
     for (let i = 0; i < bottom.length; i++) {
-      addPolygonHelperEntity(f, viewer.entities.add({
+      viewer.entities.add({
         ...common,
         polyline: {
           positions: [bottom[i], top[i]],
-          width: 2,
-          material: catColor.withAlpha(0.75),
+          width: 1,
+          material: catColor.withAlpha(0.65),
           clampToGround: false
         }
-      }));
-    }
-
-    // Add faint diagonal cross braces so it is obvious this is a 3D volume.
-    for (let i = 0; i < bottom.length; i++) {
-      const next = (i + 1) % bottom.length;
-addPolygonHelperEntity(f, viewer.entities.add({
-  ...common,
-  polygon: {
-    hierarchy: new Cesium.PolygonHierarchy(
-      coords.map(c => Cesium.Cartesian3.fromDegrees(c[0], c[1]))
-    ),
-    height: ceilingMeters,
-    extrudedHeight: floorMeters,
-    material: catColor.withAlpha(0.12),
-    outline: false,
-    closeTop: true,
-    closeBottom: true
-  }
-}));
+      });
     }
   }
 
@@ -330,6 +308,10 @@ function setOptions(selectId, items, labelFn, valueFn = x => x) {
     opt.textContent = labelFn(item);
     select.appendChild(opt);
   });
+}
+
+function uniqueSorted(arr) {
+  return [...new Set(arr.filter(Boolean))].sort();
 }
 
 function populateMissionBuilder() {
@@ -577,9 +559,9 @@ document.getElementById("homeBtn")?.addEventListener("click", corpusHome);
 document.getElementById("topDownBtn")?.addEventListener("click", birdseye);
 document.getElementById("tiltBtn")?.addEventListener("click", tiltView);
 document.getElementById("stopFlyBtn")?.addEventListener("click", stopFlythrough);
-document.getElementById("togglePanelBtn")?.addEventListener("click", () =>
-  document.getElementById("panel")?.classList.toggle("collapsed")
-);
+document.getElementById("togglePanelBtn")?.addEventListener("click", () => {
+  document.getElementById("panel")?.classList.toggle("collapsed");
+});
 
 document.getElementById("departureAirportSelect")?.addEventListener("change", updateDepartureRunways);
 document.getElementById("departureRunwaySelect")?.addEventListener("change", updateDepartureRoutes);
@@ -588,10 +570,117 @@ document.getElementById("recoveryAirportSelect")?.addEventListener("change", upd
 document.getElementById("recoveryRunwaySelect")?.addEventListener("change", updateRecoveryArrivals);
 document.getElementById("showMissionBtn")?.addEventListener("click", showSelectedMission);
 
+
+function hideAllEntities() {
+  viewer.entities.values.forEach(e => e.show = false);
+}
+
+function showEntityList(entityList) {
+  entityList.forEach(e => e.show = true);
+}
+
+function getPolygonEntitiesById(areaId) {
+  return entitiesByType.polygon.filter(e => e.tw4Feature && e.tw4Feature.id === areaId);
+}
+
+function getAirportPointEntities(airportCode) {
+  return entitiesByType.point.filter(e => {
+    const f = e.tw4Feature || {};
+    return f.airportCode === airportCode || f.airport === airportCode || f.id === airportCode || f.name === airportCode || f.label === airportCode;
+  });
+}
+
+function getRouteEntityByIndex(idx) {
+  const route = routes[idx];
+  return route ? [route.entity] : [];
+}
+
+function populateQuickViewItems() {
+  const type = document.getElementById("quickViewTypeSelect")?.value;
+  const itemSelect = document.getElementById("quickViewItemSelect");
+  if (!itemSelect) return;
+
+  itemSelect.innerHTML = "";
+  const blank = document.createElement("option");
+  blank.value = "";
+  blank.textContent = "-- Select --";
+  itemSelect.appendChild(blank);
+
+  let items = [];
+
+  if (type === "departures") {
+    items = getRouteMetaList()
+      .filter(r => r.meta.routeType === "departure" || r.feature.routeType === "departure")
+      .map(r => ({
+        value: `route:${r.idx}`,
+        label: `${r.meta.airport || r.feature.airport || ""} ${r.meta.runway ? "RWY " + r.meta.runway + " " : ""}${r.meta.routeFamily || r.meta.name || r.feature.name}`
+      }));
+  }
+
+  if (type === "arrivals") {
+    items = getRouteMetaList()
+      .filter(r => r.meta.routeType === "arrival" || r.feature.routeType === "arrival")
+      .map(r => ({
+        value: `route:${r.idx}`,
+        label: `${r.meta.airport || r.feature.airport || ""} ${r.meta.runway ? "RWY " + r.meta.runway + " " : ""}${r.meta.routeFamily || r.meta.name || r.feature.name}`
+      }));
+  }
+
+  if (type === "workingAreas") {
+    items = POLYGONS.map(p => ({
+      value: `area:${p.id}`,
+      label: p.name || p.id
+    }));
+  }
+
+  if (type === "airfields") {
+    items = AIRPORTS.map(a => ({
+      value: `airport:${a.airportCode}`,
+      label: `${a.airportCode} - ${a.airportName}`
+    }));
+  }
+
+  items
+    .filter(item => item.label)
+    .sort((a, b) => a.label.localeCompare(b.label))
+    .forEach(item => {
+      const opt = document.createElement("option");
+      opt.value = item.value;
+      opt.textContent = item.label;
+      itemSelect.appendChild(opt);
+    });
+}
+
+function showQuickViewSelection() {
+  const value = document.getElementById("quickViewItemSelect")?.value;
+  if (!value) return;
+
+  const [kind, id] = value.split(":");
+  hideAllEntities();
+
+  let selectedEntities = [];
+  if (kind === "route") selectedEntities = getRouteEntityByIndex(Number(id));
+  if (kind === "area") selectedEntities = getPolygonEntitiesById(id);
+  if (kind === "airport") selectedEntities = getAirportPointEntities(id);
+
+  showEntityList(selectedEntities);
+  if (selectedEntities.length) viewer.flyTo(selectedEntities);
+}
+
+function resetQuickView() {
+  updateVisibility();
+  const itemSelect = document.getElementById("quickViewItemSelect");
+  if (itemSelect) itemSelect.value = "";
+}
+
+
+document.getElementById("quickViewTypeSelect")?.addEventListener("change", populateQuickViewItems);
+document.getElementById("showQuickViewBtn")?.addEventListener("click", showQuickViewSelection);
+document.getElementById("resetQuickViewBtn")?.addEventListener("click", resetQuickView);
+
 populateMissionBuilder();
 corpusHome();
 
 console.log(
   `Loaded ${DATA.features.length} KML features, ${routes.length} routes, ${AIRPORTS.length} airports, ${POINTS.length} waypoints, ${POLYGONS.length} polygons`
 );
-console.log(`MOA visual altitude scale: ${MOA_ALTITUDE_VISUAL_SCALE}x`);
