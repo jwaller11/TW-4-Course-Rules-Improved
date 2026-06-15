@@ -570,6 +570,67 @@ document.getElementById("recoveryAirportSelect")?.addEventListener("change", upd
 document.getElementById("recoveryRunwaySelect")?.addEventListener("change", updateRecoveryArrivals);
 document.getElementById("showMissionBtn")?.addEventListener("click", showSelectedMission);
 
+let selectedQuickViewGroup = "";
+
+const QUICK_VIEW_GROUPS = {
+  departures: [
+    { key: "all", label: "All Departures", aliases: [] },
+    { key: "beachline", label: "Beachline", aliases: ["beachline"] },
+    { key: "rusty", label: "Rusty", aliases: ["rusty"] }
+  ],
+  arrivals: [
+    { key: "all", label: "All Arrivals", aliases: [] },
+    { key: "shamrock", label: "Shamrock", aliases: ["shamrock"] },
+    { key: "northern", label: "Northern", aliases: ["northern"] },
+    { key: "ne", label: "NE", aliases: ["ne arrival", "northeast", "north east"] }
+  ],
+  workingAreas: [
+    { key: "all", label: "All Working Areas", aliases: [] },
+    { key: "mustang", label: "Mustang", aliases: ["mustang"] },
+    { key: "kings", label: "Kings 4", aliases: ["kings"] },
+    { key: "foxtrot", label: "Foxtrot", aliases: ["foxtrot"] }
+  ],
+  airfields: [
+    { key: "all", label: "All Airfields", aliases: [] },
+    ...AIRPORTS.map(a => ({
+      key: a.airportCode,
+      label: a.airportCode,
+      aliases: [a.airportCode, a.airportName]
+    }))
+  ]
+};
+
+function routeText(r) {
+  return [
+    r.meta.routeFamily,
+    r.meta.name,
+    r.meta.airport,
+    r.meta.runway,
+    r.feature.name,
+    r.feature.id,
+    r.feature.routeFamily,
+    r.feature.airport,
+    r.feature.runway
+  ].filter(Boolean).join(" ").toLowerCase();
+}
+
+function routeMatchesGroup(r, group) {
+  if (!group || group.key === "all") return true;
+  const text = routeText(r);
+  return group.aliases.some(alias => text.includes(alias.toLowerCase()));
+}
+
+function areaMatchesGroup(p, group) {
+  if (!group || group.key === "all") return true;
+  const text = `${p.name || ""} ${p.id || ""} ${p.category || ""}`.toLowerCase();
+  return group.aliases.some(alias => text.includes(alias.toLowerCase()));
+}
+
+function airportMatchesGroup(f, group) {
+  if (!group || group.key === "all") return true;
+  const text = `${f.airportCode || ""} ${f.airport || ""} ${f.id || ""} ${f.name || ""} ${f.label || ""}`.toLowerCase();
+  return group.aliases.some(alias => text.includes(alias.toLowerCase()));
+}
 
 function hideAllEntities() {
   viewer.entities.values.forEach(e => e.show = false);
@@ -579,26 +640,39 @@ function showEntityList(entityList) {
   entityList.forEach(e => e.show = true);
 }
 
-function getPolygonEntitiesById(areaId) {
-  return entitiesByType.polygon.filter(e => e.tw4Feature && e.tw4Feature.id === areaId);
+function getRoutesByTypeAndGroup(type, group) {
+  const routeType = type === "departures" ? "departure" : "arrival";
+
+  return getRouteMetaList().filter(r =>
+    (r.meta.routeType === routeType || r.feature.routeType === routeType) &&
+    routeMatchesGroup(r, group)
+  );
 }
 
-function getAirportPointEntities(airportCode) {
-  return entitiesByType.point.filter(e => {
-    const f = e.tw4Feature || {};
-    return f.airportCode === airportCode || f.airport === airportCode || f.id === airportCode || f.name === airportCode || f.label === airportCode;
-  });
+function getAreasByGroup(group) {
+  return POLYGONS.filter(p => areaMatchesGroup(p, group));
 }
 
-function getRouteEntityByIndex(idx) {
-  const route = routes[idx];
-  return route ? [route.entity] : [];
-}
+function getAirportEntitiesByGroup(group) {
+  if (group.key === "all") {
+    return entitiesByType.point.filter(e => e.tw4Feature?.pointType === "airport");
+  }
 
-let selectedQuickViewGroup = "";
+  const pointEntities = entitiesByType.point.filter(e =>
+    e.tw4Feature && airportMatchesGroup(e.tw4Feature, group)
+  );
 
-function routeFamilyName(r) {
-  return r.meta.routeFamily || r.meta.name || r.feature.routeFamily || r.feature.name || "Other";
+  const routeEntities = routes
+    .filter(r => routeMatchesGroup(
+      {
+        meta: LINE_METADATA[r.feature.id] || {},
+        feature: r.feature
+      },
+      group
+    ))
+    .map(r => r.entity);
+
+  return [...pointEntities, ...routeEntities];
 }
 
 function populateQuickViewGroups() {
@@ -611,59 +685,38 @@ function populateQuickViewGroups() {
   container.innerHTML = "";
   itemSelect.innerHTML = `<option value="">-- Select group first --</option>`;
 
-  let groups = [];
+  const groups = QUICK_VIEW_GROUPS[type] || [];
 
-  if (type === "departures") {
-    groups = [...new Set(
-      getRouteMetaList()
-        .filter(r => r.meta.routeType === "departure" || r.feature.routeType === "departure")
-        .map(routeFamilyName)
-    )];
-  }
+  groups.forEach(group => {
+    let hasContent = true;
 
-  if (type === "arrivals") {
-    groups = [...new Set(
-      getRouteMetaList()
-        .filter(r => r.meta.routeType === "arrival" || r.feature.routeType === "arrival")
-        .map(routeFamilyName)
-    )];
-  }
+    if (type === "departures" || type === "arrivals") {
+      hasContent = getRoutesByTypeAndGroup(type, group).length > 0;
+    }
 
-  if (type === "workingAreas") {
-    groups = [...new Set(
-      POLYGONS.map(p => {
-        const name = p.name || p.id || "";
-        if (name.toLowerCase().includes("mustang")) return "Mustang";
-        if (name.toLowerCase().includes("kings")) return "Kings 4";
-        if (name.toLowerCase().includes("foxtrot")) return "Foxtrot";
-        return p.category || "Other";
-      })
-    )];
-  }
+    if (type === "workingAreas") {
+      hasContent = getAreasByGroup(group).length > 0;
+    }
 
-  if (type === "airfields") {
-    groups = AIRPORTS.map(a => a.airportCode);
-  }
+    if (!hasContent && group.key !== "all") return;
 
-  groups.sort().forEach(group => {
     const btn = document.createElement("button");
-    btn.textContent = group;
+    btn.textContent = group.label;
 
     btn.onclick = () => {
-      selectedQuickViewGroup = group;
+      selectedQuickViewGroup = group.key;
 
       [...container.querySelectorAll("button")].forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
 
-      populateQuickViewItems(group);
+      populateQuickViewItems(type, group);
     };
 
     container.appendChild(btn);
   });
 }
 
-function populateQuickViewItems(groupName) {
-  const type = document.getElementById("quickViewTypeSelect")?.value;
+function populateQuickViewItems(type, group) {
   const itemSelect = document.getElementById("quickViewItemSelect");
   if (!itemSelect) return;
 
@@ -675,45 +728,30 @@ function populateQuickViewItems(groupName) {
   itemSelect.appendChild(blank);
 
   const all = document.createElement("option");
-  all.value = `group:${type}:${groupName}`;
-  all.textContent = `All ${groupName}`;
+  all.value = `group:${type}:${group.key}`;
+  all.textContent = `Show ${group.label}`;
   itemSelect.appendChild(all);
 
   let items = [];
 
-  if (type === "departures") {
-    items = getRouteMetaList()
-      .filter(r => (r.meta.routeType === "departure" || r.feature.routeType === "departure"))
-      .filter(r => routeFamilyName(r) === groupName)
-      .map(r => ({
-        value: `route:${r.idx}`,
-        label: `${r.meta.runway ? "RWY " + r.meta.runway + " - " : ""}${r.meta.name || r.feature.name}`
-      }));
-  }
-
-  if (type === "arrivals") {
-    items = getRouteMetaList()
-      .filter(r => (r.meta.routeType === "arrival" || r.feature.routeType === "arrival"))
-      .filter(r => routeFamilyName(r) === groupName)
-      .map(r => ({
-        value: `route:${r.idx}`,
-        label: `${r.meta.runway ? "RWY " + r.meta.runway + " - " : ""}${r.meta.name || r.feature.name}`
-      }));
+  if (type === "departures" || type === "arrivals") {
+    items = getRoutesByTypeAndGroup(type, group).map(r => ({
+      value: `route:${r.idx}`,
+      label: `${r.meta.runway ? "RWY " + r.meta.runway + " - " : ""}${r.meta.name || r.meta.routeFamily || r.feature.name}`
+    }));
   }
 
   if (type === "workingAreas") {
-    items = POLYGONS
-      .filter(p => (p.name || "").toLowerCase().includes(groupName.toLowerCase().replace(" 4", "")))
-      .map(p => ({
-        value: `area:${p.id}`,
-        label: p.name || p.id
-      }));
+    items = getAreasByGroup(group).map(p => ({
+      value: `area:${p.id}`,
+      label: p.name || p.id
+    }));
   }
 
-  if (type === "airfields") {
+  if (type === "airfields" && group.key !== "all") {
     items = [{
-      value: `airport:${groupName}`,
-      label: `Show ${groupName}`
+      value: `airport:${group.key}`,
+      label: `Show ${group.label}`
     }];
   }
 
@@ -729,13 +767,49 @@ function showQuickViewSelection() {
   const value = document.getElementById("quickViewItemSelect")?.value;
   if (!value) return;
 
-  const [kind, id] = value.split(":");
+  const parts = value.split(":");
+  const kind = parts[0];
+
   hideAllEntities();
 
   let selectedEntities = [];
-  if (kind === "route") selectedEntities = getRouteEntityByIndex(Number(id));
-  if (kind === "area") selectedEntities = getPolygonEntitiesById(id);
-  if (kind === "airport") selectedEntities = getAirportPointEntities(id);
+
+  if (kind === "route") {
+    const idx = Number(parts[1]);
+    selectedEntities = routes[idx] ? [routes[idx].entity] : [];
+  }
+
+  if (kind === "area") {
+    const areaId = parts[1];
+    selectedEntities = entitiesByType.polygon.filter(e => e.tw4Feature?.id === areaId);
+  }
+
+  if (kind === "airport") {
+    const airportCode = parts[1];
+    const group = QUICK_VIEW_GROUPS.airfields.find(g => g.key === airportCode);
+    selectedEntities = getAirportEntitiesByGroup(group);
+  }
+
+  if (kind === "group") {
+    const type = parts[1];
+    const groupKey = parts[2];
+    const group = QUICK_VIEW_GROUPS[type].find(g => g.key === groupKey);
+
+    if (type === "departures" || type === "arrivals") {
+      selectedEntities = getRoutesByTypeAndGroup(type, group).map(r => r.entity);
+    }
+
+    if (type === "workingAreas") {
+      const areas = getAreasByGroup(group);
+      selectedEntities = entitiesByType.polygon.filter(e =>
+        areas.some(p => p.id === e.tw4Feature?.id)
+      );
+    }
+
+    if (type === "airfields") {
+      selectedEntities = getAirportEntitiesByGroup(group);
+    }
+  }
 
   showEntityList(selectedEntities);
   if (selectedEntities.length) viewer.flyTo(selectedEntities);
@@ -743,10 +817,10 @@ function showQuickViewSelection() {
 
 function resetQuickView() {
   updateVisibility();
+
   const itemSelect = document.getElementById("quickViewItemSelect");
   if (itemSelect) itemSelect.value = "";
 }
-
 
 document.getElementById("quickViewTypeSelect")?.addEventListener("change", populateQuickViewGroups);
 document.getElementById("showQuickViewBtn")?.addEventListener("click", showQuickViewSelection);
