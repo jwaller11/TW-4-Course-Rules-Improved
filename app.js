@@ -725,40 +725,6 @@ function populateQuickViewItems(groupName) {
   });
 }
 
-  if (type === "arrivals") {
-    items = getRouteMetaList()
-      .filter(r => r.meta.routeType === "arrival" || r.feature.routeType === "arrival")
-      .map(r => ({
-        value: `route:${r.idx}`,
-        label: `${r.meta.airport || r.feature.airport || ""} ${r.meta.runway ? "RWY " + r.meta.runway + " " : ""}${r.meta.routeFamily || r.meta.name || r.feature.name}`
-      }));
-  }
-
-  if (type === "workingAreas") {
-    items = POLYGONS.map(p => ({
-      value: `area:${p.id}`,
-      label: p.name || p.id
-    }));
-  }
-
-  if (type === "airfields") {
-    items = AIRPORTS.map(a => ({
-      value: `airport:${a.airportCode}`,
-      label: `${a.airportCode} - ${a.airportName}`
-    }));
-  }
-
-  items
-    .filter(item => item.label)
-    .sort((a, b) => a.label.localeCompare(b.label))
-    .forEach(item => {
-      const opt = document.createElement("option");
-      opt.value = item.value;
-      opt.textContent = item.label;
-      itemSelect.appendChild(opt);
-    });
-}
-
 function showQuickViewSelection() {
   const value = document.getElementById("quickViewItemSelect")?.value;
   if (!value) return;
