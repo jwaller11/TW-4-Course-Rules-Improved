@@ -117,3 +117,18 @@ label {
   font-size: 12px;
   line-height: 1.35;
 }
+
+.buttonGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.buttonGrid button {
+  margin: 0;
+}
+
+.buttonGrid button.active {
+  border: 2px solid #4ea3ff;
+}
